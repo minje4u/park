@@ -1,99 +1,55 @@
+require('dotenv').config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const helmet = require('helmet');
 const app = express();
 
 const Work = require("./models/work");
 const Employee = require("./models/Employee");
 const Notice = require("./models/Notice");
 
-
-// 운세 목록
-const fortunes = [
-  "오늘은 행운의 날! 작업 능률이 최고조에 달할 거예요.",
-  "조금만 더 노력하면 큰 성과가 있을 거예요.",
-  "동료와의 협력이 오늘의 성공 비결입니다.",
-  "새로운 아이디어가 떠오를 거예요. 메모해두세요!",
-  "오늘은 안전에 특히 주의하세요. 건강이 최고의 재산입니다.",
-  "긍정적인 마인드가 행운을 부릅니다. 힘내세요!",
-  "작은 실수에 연연하지 마세요. 전체적으로 좋은 날입니다.",
-  "오늘의 노력이 미래의 큰 보상으로 돌아올 거예요.",
-  "동료의 작은 칭찬이 큰 힘이 될 거예요. 서로 격려해보세요.",
-  "꾸준함이 실력입니다. 오늘도 한 걸음 성장하고 있어요."
-];
-
-// Fortune 스키마 정의
-const fortuneSchema = new mongoose.Schema({
-  username: String,
-  date: String,
-  fortune: String
-});
-
-const Fortune = mongoose.model('Fortune', fortuneSchema);
-
-// 운세 상태 확인 API
-app.get('/api/fortune-status/:username', async (req, res) => {
-  const { username } = req.params;
-  const today = new Date().toDateString();
-  
-  try {
-    const userFortune = await Fortune.findOne({ username, date: today });
-    if (userFortune) {
-      res.json({ clicked: true, fortune: userFortune.fortune });
-    } else {
-      res.json({ clicked: false });
-    }
-  } catch (error) {
-    console.error('운세 상태 확인 중 오류 발생:', error);
-    res.status(500).json({ error: '서버 오류' });
-  }
-});
-
-// 운세 가져오기 API
-app.post('/api/get-fortune/:username', async (req, res) => {
-  const { username } = req.params;
-  const today = new Date().toDateString();
-  
-  try {
-    let userFortune = await Fortune.findOne({ username, date: today });
-    if (!userFortune) {
-      const randomFortune = fortunes[Math.floor(Math.random() * fortunes.length)];
-      userFortune = new Fortune({ username, date: today, fortune: randomFortune });
-      await userFortune.save();
-    }
-    res.json({ fortune: userFortune.fortune });
-  } catch (error) {
-    console.error('운세 가져오기 중 오류 발생:', error);
-    res.status(500).json({ error: '서버 오류' });
-  }
-});
+const isDev = process.env.NODE_ENV !== 'production';
 
 // 미들웨어 설정
+app.use(helmet()); // 보안 헤더 추가
 app.use(cors({
-  origin: 'https://minje4u.github.io',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: isDev ? 'http://localhost:3000' : 'https://minje4u.github.io',
   credentials: true
 }));
 app.use(express.json());
+
+// 로깅 미들웨어
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// MongoDB 연결
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log("MongoDB에 연결되었습니다.");
+    createInitialAdminAccount();
+  })
+  .catch(err => console.error("MongoDB 연결 오류: ", err));
 
 // 초기 관리자 계정 생성 함수
 async function createInitialAdminAccount() {
   try {
     const adminExists = await Employee.findOne({ role: 'admin' });
     if (!adminExists) {
+      const hashedPassword = await bcrypt.hash('0000', 10);
       const adminAccount = new Employee({
         name: 'admin',
         employeeId: 'ADMIN001',
-        password: '0000',
+        password: hashedPassword,
         role: 'admin',
         isInitialPassword: true
       });
       await adminAccount.save();
       console.log('초기 관리자 계정이 생성되었습니다.');
-    } else {
-      console.log('관리자 계정이 이미 존재합니다.');
     }
   } catch (error) {
     console.error('초기 관리자 계정 생성 중 오류 발생:', error);
@@ -102,7 +58,7 @@ async function createInitialAdminAccount() {
 
 // 비밀번호 재설정 코드 생성 및 저장 함수
 async function generateResetCode(employeeId) {
-  const resetCode = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6자리 코드
+  const resetCode = crypto.randomBytes(3).toString('hex').toUpperCase();
   const employee = await Employee.findOne({ employeeId });
   if (employee) {
     employee.resetCode = resetCode;
@@ -113,23 +69,12 @@ async function generateResetCode(employeeId) {
   return null;
 }
 
-// MongoDB 연결
-mongoose.connect("mongodb+srv://park:1234@cluster0.defae.mongodb.net/myDatabase?retryWrites=true&w=majority")
-  .then(() => {
-    console.log("MongoDB에 연결되었습니다.");
-    createInitialAdminAccount();
-  })
-  .catch(err => console.log("MongoDB 연결 오류: ", err));
-
 // 라우트 정의
-// 비밀번호 재설정 요청
 app.post("/api/reset-password-request", async (req, res) => {
-  const { employeeId } = req.body;
   try {
+    const { employeeId } = req.body;
     const resetCode = await generateResetCode(employeeId);
     if (resetCode) {
-      // 여기서 실제로는 이메일이나 SMS로 코드를 전송해야 합니다.
-      // 테스트를 위해 콘솔에 출력합니다.
       console.log(`Reset code for ${employeeId}: ${resetCode}`);
       res.json({ message: "비밀번호 재설정 코드가 생성되었습니다." });
     } else {
@@ -141,17 +86,16 @@ app.post("/api/reset-password-request", async (req, res) => {
   }
 });
 
-// 비밀번호 재설정
 app.post("/api/reset-password", async (req, res) => {
-  const { employeeId, resetCode, newPassword } = req.body;
   try {
+    const { employeeId, resetCode, newPassword } = req.body;
     const employee = await Employee.findOne({
       employeeId,
       resetCode,
       resetCodeExpires: { $gt: Date.now() }
     });
     if (employee) {
-      employee.password = newPassword;
+      employee.password = await bcrypt.hash(newPassword, 10);
       employee.resetCode = undefined;
       employee.resetCodeExpires = undefined;
       employee.isInitialPassword = false;
@@ -170,24 +114,19 @@ app.post("/api/reset-password", async (req, res) => {
 app.post("/api/employees", async (req, res) => {
   try {
     const { name, employeeId, password, role } = req.body;
-    console.log('받은 데이터:', { name, employeeId, role }); // 비밀번호는 로그에 남기지 않습니다.
-
-    // 중복 검사
     const existingEmployee = await Employee.findOne({ $or: [{ name }, { employeeId }] });
     if (existingEmployee) {
       return res.status(400).json({ error: '이미 존재하는 이름 또는 ID입니다.' });
     }
-
+    const hashedPassword = await bcrypt.hash(password, 10);
     const newEmployee = new Employee({ 
       name, 
       employeeId, 
-      password, 
+      password: hashedPassword, 
       role,
-      isInitialPassword: true // 초기 비밀번호임을 표시
+      isInitialPassword: true
     });
     await newEmployee.save();
-
-    console.log('새 직원 추가됨:', newEmployee);
     res.status(201).json({ message: "직원이 성공적으로 추가되었습니다." });
   } catch (error) {
     console.error('직원 추가 중 오류:', error);

@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import "./Login.css";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const Login = ({ onLogin }) => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -16,8 +18,9 @@ const Login = ({ onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
     try {
-      const response = await axios.post('http://localhost:5000/api/login', { name, password });
+      const response = await axios.post(`${API_URL}/api/login`, { name, password });
       console.log('Login response:', response.data);
       
       if (password === '0000') {
@@ -26,7 +29,6 @@ const Login = ({ onLogin }) => {
       } else {
         console.log('Normal login, proceeding to main page');
         onLogin(response.data.name, response.data.role);
-        // 로그인 성공 후 페이지 이동
         if (response.data.role === 'admin') {
           navigate('/admin');
         } else {
@@ -35,7 +37,16 @@ const Login = ({ onLogin }) => {
       }
     } catch (error) {
       console.error('로그인 중 오류 발생:', error);
-      setErrorMessage(error.response?.data?.error || "로그인 중 오류가 발생했습니다.");
+      if (error.response) {
+        // 서버 응답이 있는 경우
+        setErrorMessage(error.response.data.error || "로그인에 실패했습니다.");
+      } else if (error.request) {
+        // 요청이 전송되었지만 응답을 받지 못한 경우
+        setErrorMessage("서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.");
+      } else {
+        // 요청 설정 중 오류가 발생한 경우
+        setErrorMessage("로그인 요청 중 오류가 발생했습니다.");
+      }
     }
   };
 
@@ -46,19 +57,24 @@ const Login = ({ onLogin }) => {
       return;
     }
     try {
-      const response = await axios.post('http://localhost:5000/api/change-password', { name, newPassword });
+      const response = await axios.post(`${API_URL}/api/change-password`, { name, newPassword });
       if (response.data.message === "비밀번호가 성공적으로 변경되었습니다.") {
         alert("비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해주세요.");
         setShowChangePassword(false);
         setPassword("");
         setNewPassword("");
         setConfirmPassword("");
-        // 비밀번호 변경 후 로그인 페이지로 리다이렉트
         navigate('/login');
       }
     } catch (error) {
       console.error('비밀번호 변경 중 오류 발생:', error);
-      setErrorMessage(error.response?.data?.error || "비밀번호 변경 중 오류가 발생했습니다.");
+      if (error.response) {
+        setErrorMessage(error.response.data.error || "비밀번호 변경에 실패했습니다.");
+      } else if (error.request) {
+        setErrorMessage("서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.");
+      } else {
+        setErrorMessage("비밀번호 변경 요청 중 오류가 발생했습니다.");
+      }
     }
   };
 
