@@ -1,0 +1,137 @@
+/* src/EmployeeManagement.css */
+.employee-management-container {
+    max-width: 100%;
+    padding: 15px;
+    box-sizing: border-box;
+    overflow-x: auto;
+}
+
+.employee-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.employee-header h2 {
+    font-size: 24px;
+    color: #333;
+}
+
+.employee-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.employee-form input, .employee-form select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.employee-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+    white-space: nowrap;
+}
+
+.employee-button:hover {
+    background-color: #45a049;
+}
+
+.employee-button.delete {
+    background-color: #f44336;
+}
+
+.employee-button.delete:hover {
+    background-color: #d32f2f;
+}
+
+.employee-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+.employee-table th, .employee-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.employee-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.employee-table td {
+    white-space: nowrap;
+}
+
+.employee-table .button-cell {
+    display: flex;
+    gap: 5px;
+}
+
+@media (max-width: 768px) {
+    .employee-header h2 {
+        font-size: 20px;
+    }
+
+    .employee-form input, .employee-form select, .employee-button {
+        font-size: 14px;
+    }
+
+    .employee-table {
+        font-size: 12px;
+    }
+
+    .employee-table th, .employee-table td {
+        padding: 6px;
+    }
+
+    .employee-button {
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+}
+
+.notice-form {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+.notice-form input,
+.notice-form textarea {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 5px;
+}
+
+.notice-form textarea {
+    height: 100px;
+}
+
+.notice-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.notice-button:hover {
+    background-color: #45a049;
+}
