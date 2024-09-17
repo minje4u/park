@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/park/static/css/main.211dcaf8.css",
-    "main.js": "/park/static/js/main.13bf1093.js",
+    "main.js": "/park/static/js/main.cf255d35.js",
     "index.html": "/park/index.html",
     "main.211dcaf8.css.map": "/park/static/css/main.211dcaf8.css.map",
-    "main.13bf1093.js.map": "/park/static/js/main.13bf1093.js.map"
+    "main.cf255d35.js.map": "/park/static/js/main.cf255d35.js.map"
   },
   "entrypoints": [
     "static/css/main.211dcaf8.css",
-    "static/js/main.13bf1093.js"
+    "static/js/main.cf255d35.js"
   ]
 }
