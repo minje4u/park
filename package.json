@@ -62,6 +62,7 @@
   "license": "ISC",
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "eslint-plugin-react-hooks": "^4.6.2",
     "gh-pages": "^6.1.1",
     "nodemon": "^3.1.4"
   },

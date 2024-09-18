@@ -1,6 +1,8 @@
 module.exports = {
+  extends: ['react-app'],
+  plugins: ['react-hooks'],
   rules: {
-    'no-unused-vars': 'warn',
+    'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn'
   }
 };
