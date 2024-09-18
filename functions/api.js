@@ -12,11 +12,10 @@ const cors = require('cors');
 const app = express();
 const router = express.Router();
 
-// CORS 설정
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? 'https://parkkk.netlify.app'
-    : 'http://localhost:3000'
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // JSON 파싱 미들웨어 추가
@@ -29,8 +28,11 @@ app.use('/.netlify/functions/api', router);
 let conn = null;
 const connectDB = async () => {
   if (conn == null) {
+    console.log('Connecting to MongoDB...');
     conn = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000
+      serverSelectionTimeoutMS: 5000,
+      useNewUrlParser: true,
+      useUnifiedTopology: true
     });
     console.log('MongoDB connected successfully');
     await createInitialAdminAccount();
