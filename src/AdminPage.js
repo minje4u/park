@@ -91,15 +91,6 @@ const AdminPage = ({ username }) => {
     }
   };
 
-  const calculateSumAndPay = useMemo(() => (weights) => {
-    const sum = Object.values(weights).reduce((acc, val) => acc + (val || 0), 0);
-    const pay = Math.floor(sum * 270);
-    return {
-      sum,
-      pay: new Intl.NumberFormat('ko-KR').format(pay) + "원",
-    };
-  }, []);
-
   const handleDeleteDay = async (day) => {
     if (window.confirm(`${day}일 데이터를 삭제하시겠습니까?`) &&
         window.confirm("정말로 삭제하시겠습니까?")) {
@@ -203,7 +194,7 @@ const AdminPage = ({ username }) => {
   useEffect(() => {
     fetchWorkStatistics();
     fetchNotices(); // 공지사항 가져오기
-  }, [selectedDate]);
+  }, [selectedDate, fetchWorkStatistics]);
 
   const handleResetDatabase = async () => {
     if (window.confirm("데이터베이스의 모든 데이터를 초기화하시겠습니까?")) {

@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx"; // xlsx 라이브러리 추가
-import axios from 'axios';
 import "./WorkRegistration.css"; 
 
 const WorkRegistration = ({ onConfirm }) => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
-  const [fileContent, setFileContent] = useState([]); // 파일 내용을 저장할 상태
   const [filteredContent, setFilteredContent] = useState([]); // 필터링된 내용을 저장할 상태
   const [confirmationMessage, setConfirmationMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -36,13 +34,9 @@ const WorkRegistration = ({ onConfirm }) => {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
-      setFileContent(jsonData); // 파일 내용을 상태에 저장
-
-      // 조 3만 추출하고 중량이 0 이상인 항목 필터링
-      const filteredData = jsonData.filter(
+      setFilteredContent(jsonData.filter(
         (row) => row['조'] === 3 && row['중량(Kg)'] > 0
-      );
-      setFilteredContent(filteredData); // 필터링된 내용을 상태에 저장
+      )); // 필터링된 내용을 상태에 저장
     };
     reader.readAsArrayBuffer(file);
   };
@@ -69,7 +63,6 @@ const WorkRegistration = ({ onConfirm }) => {
     setConfirmationMessage(`${selectedDate} 작업이 등록되었습니다.`);
     setErrorMessage("");
     setSelectedFile(null);
-    setFileContent([]);
     setFilteredContent([]);
   };
 

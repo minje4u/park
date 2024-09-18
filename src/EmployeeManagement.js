@@ -9,7 +9,7 @@ const EmployeeManagement = () => {
   const [newEmployeeName, setNewEmployeeName] = useState("");
   const [newEmployeeID, setNewEmployeeID] = useState("");
   const [newEmployeeRole, setNewEmployeeRole] = useState("worker");
-  const [newEmployeePassword, setNewEmployeePassword] = useState("0000");
+  const [newEmployeePassword, setNewEmployeePassword] = useState("");
   const [noticeTitle, setNoticeTitle] = useState("");
   const [noticeContent, setNoticeContent] = useState("");
 

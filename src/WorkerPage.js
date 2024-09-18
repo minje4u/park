@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import axios from 'axios';
 import "./WorkerPage.css";
 
-const WorkerPage = () => {
-  const { username } = useParams();
-  const navigate = useNavigate();
+const WorkerPage = ({ username }) => {
   const [workerData, setWorkerData] = useState([]);
   const [todayData, setTodayData] = useState(null);
   const [currentMonth, setCurrentMonth] = useState('');
@@ -17,10 +15,8 @@ const WorkerPage = () => {
 
   useEffect(() => {
     fetchWorkerData();
-    fetchNotices();
     checkFortuneStatus();
-    setCurrentMonth(getCurrentMonth());
-  }, [username]);
+  }, [fetchWorkerData, checkFortuneStatus]); // 의존성 배열에 함수들을 추가
 
   const getCurrentMonth = () => {
     const now = new Date();
