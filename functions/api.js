@@ -13,7 +13,11 @@ const app = express();
 const router = express.Router();
 
 // CORS 설정
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? 'https://parkkk.netlify.app'
+    : 'http://localhost:3000'
+}));
 
 // JSON 파싱 미들웨어 추가
 app.use(express.json());
