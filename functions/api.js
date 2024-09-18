@@ -2,9 +2,9 @@ require('dotenv').config();
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 
 const mongoose = require('mongoose');
-const Employee = require('./models/Employee');
-const Work = require('./models/Work');
-const Notice = require('./models/Notice');
+const Employee = require('./models/employee');
+const Work = require('./models/work');
+const Notice = require('./models/notice');
 const express = require('express');
 const serverless = require('serverless-http');
 const cors = require('cors');
