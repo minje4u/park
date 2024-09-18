@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
-import * as XLSX from "xlsx"; // xlsx 라이브러리 추가
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import "./WorkRegistration.css"; 
+import * as XLSX from 'xlsx';
 
 const WorkRegistration = ({ onConfirm }) => {
   const [selectedDate, setSelectedDate] = useState("");
@@ -64,9 +63,12 @@ const WorkRegistration = ({ onConfirm }) => {
       payment: Math.floor(parseFloat(row['중량(Kg)']) * 270)
     }));
 
-    console.log("전송할 데이터:", { date: selectedDate, workData }); // 로그 확인
-    onConfirm(selectedDate, workData);
-    setConfirmationMessage(`${selectedDate} 작업이 등록되었습니다.`);
+    // 날짜를 'YYYY-MM-DD' 형식의 문자열로 변환
+    const formattedDate = new Date(selectedDate).toISOString().split('T')[0];
+
+    console.log("전송할 데이터:", { date: formattedDate, workData });
+    onConfirm(formattedDate, workData);
+    setConfirmationMessage(`${formattedDate} 작업이 등록되었습니다.`);
     setErrorMessage("");
     setSelectedFile(null);
     setFileContent([]);
@@ -132,3 +134,4 @@ const WorkRegistration = ({ onConfirm }) => {
 };
 
 export default WorkRegistration;
+

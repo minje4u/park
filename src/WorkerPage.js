@@ -3,6 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from 'axios';
 import "./WorkerPage.css";
 
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? '/.netlify/functions/api'
+  : 'http://localhost:8888/.netlify/functions/api';
+
 const WorkerPage = () => {
   const { username } = useParams();
   const navigate = useNavigate();
@@ -30,12 +34,12 @@ const WorkerPage = () => {
   const fetchWorkerData = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`/.netlify/functions/api/worker/${encodeURIComponent(username)}`);
+      const response = await axios.get(`${API_URL}/worker/${encodeURIComponent(username)}`);
       const data = response.data;
       const today = new Date().toISOString().split('T')[0];
-      const todayEntry = data.find(item => item.날짜 === today);
+      const todayEntry = data.find(item => item.date.split('T')[0] === today);
       setTodayData(todayEntry || null);
-      setWorkerData(data.filter(item => item.날짜 !== today));
+      setWorkerData(data.filter(item => item.date.split('T')[0] !== today));
     } catch (error) {
       console.error('작업자 데이터 조회 중 오류 발생:', error);
     } finally {
@@ -45,7 +49,7 @@ const WorkerPage = () => {
 
   const fetchNotices = async () => {
     try {
-      const response = await axios.get('/.netlify/functions/api/notices');
+      const response = await axios.get(`${API_URL}/notices`);
       setNotices(response.data);
     } catch (error) {
       console.error('공지사항 조회 중 오류 발생:', error);
@@ -54,7 +58,7 @@ const WorkerPage = () => {
 
   const checkFortuneStatus = async () => {
     try {
-      const response = await axios.get(`/.netlify/functions/api/fortune-status/${username}`);
+      const response = await axios.get(`${API_URL}/fortune-status/${username}`);
       setFortuneClicked(response.data.clicked);
       if (response.data.fortune) {
         setFortune(response.data.fortune);
@@ -67,7 +71,7 @@ const WorkerPage = () => {
   const getFortuneOfTheDay = async () => {
     if (!fortuneClicked) {
       try {
-        const response = await axios.post(`/.netlify/functions/api/get-fortune/${username}`);
+        const response = await axios.post(`${API_URL}/get-fortune/${username}`);
         setFortune(response.data.fortune);
         setFortuneClicked(true);
       } catch (error) {
@@ -85,8 +89,8 @@ const WorkerPage = () => {
     return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount);
   };
 
-  const sumKg = workerData.reduce((sum, item) => sum + item.중량, 0) + (todayData?.중량 || 0);
-  const totalPay = workerData.reduce((sum, item) => sum + item.도급비, 0) + (todayData?.도급비 || 0);
+  const sumKg = workerData.reduce((sum, item) => sum + item.weight, 0) + (todayData?.weight || 0);
+  const totalPay = workerData.reduce((sum, item) => sum + item.payment, 0) + (todayData?.payment || 0);
 
   const openNoticeModal = (notice) => {
     setSelectedNotice(notice);
@@ -144,15 +148,15 @@ const WorkerPage = () => {
           <div className="today-stats">
             <div className="stat-item">
               <span className="stat-label">중량</span>
-              <span className="stat-value">{todayData.중량.toFixed(2)} Kg</span>
+              <span className="stat-value">{todayData.weight.toFixed(2)} Kg</span>
             </div>
             <div className="stat-item">
               <span className="stat-label">작업시간</span>
-              <span className="stat-value">{todayData.작업시간}</span>
+              <span className="stat-value">{todayData.workHours}</span>
             </div>
             <div className="stat-item">
               <span className="stat-label">도급비</span>
-              <span className="stat-value">{formatCurrency(todayData.도급비)}</span>
+              <span className="stat-value">{formatCurrency(todayData.payment)}</span>
             </div>
           </div>
         ) : (
@@ -191,11 +195,11 @@ const WorkerPage = () => {
           </thead>
           <tbody>
             {workerData.map((item, index) => (
-              <tr key={item.날짜} className={index % 2 === 0 ? 'even-row' : 'odd-row'}>
-                <td>{item.날짜}</td>
-                <td>{item.중량.toFixed(2)}</td>
-                <td>{item.작업시간}</td>
-                <td>{formatCurrency(item.도급비)}</td>
+              <tr key={item.date} className={index % 2 === 0 ? 'even-row' : 'odd-row'}>
+                <td>{new Date(item.date).toLocaleDateString()}</td>
+                <td>{item.weight.toFixed(2)}</td>
+                <td>{item.workHours}</td>
+                <td>{formatCurrency(item.payment)}</td>
               </tr>
             ))}
           </tbody>

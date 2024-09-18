@@ -135,3 +135,47 @@
 .notice-button:hover {
     background-color: #45a049;
 }
+
+.employee-management {
+    padding: 20px;
+}
+
+.employee-form {
+    margin-bottom: 20px;
+}
+
+.employee-form input,
+.employee-form select,
+.employee-form button {
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+.employee-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.employee-table th,
+.employee-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.employee-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.employee-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.employee-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.employee-table button {
+    margin-right: 5px;
+}

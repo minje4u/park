@@ -4,13 +4,17 @@ import EmployeeManagement from "./EmployeeManagement";
 import "./AdminPage.css"; 
 import axios from 'axios';
 
-axios.defaults.baseURL = '/.netlify/functions/api';
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? '/.netlify/functions/api'
+  : 'http://localhost:8888/.netlify/functions/api';
+
+axios.defaults.baseURL = API_URL;
 axios.defaults.withCredentials = true;
 
 const formatWorkData = (data) => {
   const formattedData = {};
   data.forEach(work => {
-    if (work.weight > 0) {  // 중량이 0보다 큰 경우만 처리
+    if (work.weight > 0) {
       if (!formattedData[work.employeeName]) {
         formattedData[work.employeeName] = {
           작업자ID: work.employeeId,
@@ -19,7 +23,8 @@ const formatWorkData = (data) => {
         };
       }
       if (work.date) {
-        const day = new Date(work.date).getDate();
+        const localDate = new Date(work.date);
+        const day = localDate.getUTCDate(); // UTC 날짜 사용
         formattedData[work.employeeName].중량[day] = (formattedData[work.employeeName].중량[day] || 0) + work.weight;
         formattedData[work.employeeName].작업시간[day] = work.workHours;
       }
@@ -55,7 +60,8 @@ const AdminPage = ({ username }) => {
 
   const fetchWorkStatistics = async () => {
     try {
-      const response = await axios.get('/api/employee/work', {
+      console.log("작업 통계 요청 시작");
+      const response = await axios.get('/employee/work', {
         params: {
           year: selectedDate.getFullYear(),
           month: selectedDate.getMonth() + 1
@@ -66,12 +72,14 @@ const AdminPage = ({ username }) => {
       console.log("포맷된 데이터:", formattedData);
       setWorkStatistics(formattedData);
     } catch (error) {
-      console.error("작업량 통계를 가져오는 중 오류 발생:", error);
+      console.error("작업량 통계를 가져오는 중 오류 발생:", error.response ? error.response.data : error.message);
     }
   };
 
   useEffect(() => {
+    console.log("컴포넌트 마운트 또는 selectedDate 변경");
     fetchWorkStatistics();
+    fetchNotices();
   }, [selectedDate]);
 
   useEffect(() => {
@@ -80,55 +88,40 @@ const AdminPage = ({ username }) => {
     setDatesWithData(dates);
   }, [workStatistics]);
 
-  const handleConfirm = async (date, data) => {
-    try {
-      await axios.post('/api/employee/work', { date, workData: data });
-      await fetchWorkStatistics();
-      alert("작업이 등록되었습니다.");
-    } catch (error) {
-      console.error("작업 데이터 저장 중 오류 발생:", error);
-      alert("작업 등록 중 오류가 발생했습니다.");
-    }
-  };
-
-  const calculateSumAndPay = useMemo(() => (weights) => {
-    const sum = Object.values(weights).reduce((acc, val) => acc + (val || 0), 0);
-    const pay = Math.floor(sum * 270);
-    return {
-      sum,
-      pay: new Intl.NumberFormat('ko-KR').format(pay) + "원",
-    };
-  }, []);
-
   const handleDeleteDay = async (day) => {
-    if (window.confirm(`${day}일 데이터를 삭제하시겠습니까?`) &&
-        window.confirm("정말로 삭제하시겠습니까?")) {
+    if (window.confirm(`${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월 ${day}일 데이터를 삭제하시겠습니까?`) &&
+        window.confirm("정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
       try {
         const dateToDelete = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day);
-        const response = await axios.delete(`/api/employee/work/${dateToDelete.toISOString()}`);
-        console.log(response.data.message);
+        const formattedDate = dateToDelete.toISOString().split('T')[0];
         
-        // 로컬 상태 업데이트
-        const updatedStatistics = { ...workStatistics };
-        Object.entries(updatedStatistics).forEach(([employeeName, stats]) => {
-          if (stats.중량[day]) {
-            delete stats.중량[day];
-            delete stats.작업시간[day];
-          }
+        console.log('삭제 요청 URL:', `${API_URL}/employee/work/${formattedDate}`);
+        const response = await axios.delete(`${API_URL}/employee/work/${formattedDate}`);
+        console.log('서버 응답:', response.data);
+        
+        if (response.data.message) {
+          // 로컬 상태 업데이트
+          setWorkStatistics(prevStats => {
+            const updatedStats = { ...prevStats };
+            Object.keys(updatedStats).forEach(employeeName => {
+              if (updatedStats[employeeName].중량[day]) {
+                delete updatedStats[employeeName].중량[day];
+                delete updatedStats[employeeName].작업시간[day];
+              }
+              if (Object.keys(updatedStats[employeeName].중량).length === 0) {
+                delete updatedStats[employeeName];
+              }
+            });
+            return updatedStats;
+          });
           
-          // 작업자의 모든 날짜 데이터가 없으면 해당 작업자 제거
-          if (Object.keys(stats.중량).length === 0) {
-            delete updatedStatistics[employeeName];
-          }
-        });
-        setWorkStatistics(updatedStatistics);
-        
-        // 날짜 목록 업데이트
-        const remainingDates = Object.values(updatedStatistics).flatMap(stats => Object.keys(stats.중량));
-        const uniqueRemainingDates = [...new Set(remainingDates)].map(Number).sort((a, b) => a - b);
-        setDatesWithData(uniqueRemainingDates);
-
-        alert(`${day}일 데이터가 삭제되었습니다.`);
+          setDatesWithData(prevDates => prevDates.filter(d => d !== day));
+          alert(`${day}일 데이터가 삭제되었습니다.`);
+          // 데이터 삭제 후 통계 다시 불러오기
+          fetchWorkStatistics();
+        } else {
+          alert('데이터 삭제에 실패했습니다.');
+        }
       } catch (error) {
         console.error('데이터 삭제 중 오류 발생:', error);
         alert('데이터 삭제 중 오류가 발생했습니다.');
@@ -140,7 +133,7 @@ const AdminPage = ({ username }) => {
     e.preventDefault();
     console.log('공지사항 등록 시도:', { title: noticeTitle, content: noticeContent }); // 로그 추가
     try {
-      const response = await axios.post('/api/notices', {
+      const response = await axios.post('/notices', {
         title: noticeTitle,
         content: noticeContent
       });
@@ -150,7 +143,7 @@ const AdminPage = ({ username }) => {
       setNoticeContent('');
       fetchNotices(); // 공지사항 목록 새로고침
     } catch (error) {
-      console.error('공지사항 등록 중 오류:', error); // 로그 추가
+      console.error('공지사항 등록 중 오류:', error.response ? error.response.data : error.message); // 로그 추가
       alert('공지사항 등록에 실패했습니다.');
     }
   };
@@ -158,11 +151,11 @@ const AdminPage = ({ username }) => {
   const handleDeleteNotice = async (id) => {
     if (window.confirm('정말로 이 공지사항을 삭제하시겠습니까?')) {
       try {
-        await axios.delete(`/api/notices/${id}`);
+        await axios.delete(`/notices/${id}`);
         alert("공지사항이 삭제되었습니다.");
         fetchNotices(); // 공지사항 목록 새로고침
       } catch (error) {
-        console.error('공지사항 삭제 중 오류:', error);
+        console.error('공지사항 삭제 중 오류:', error.response ? error.response.data : error.message);
         alert('공지사항 삭제에 실패했습니다.');
       }
     }
@@ -176,7 +169,7 @@ const AdminPage = ({ username }) => {
 
   const handleUpdateNotice = async () => {
     try {
-      await axios.put(`/api/notices/${editingNoticeId}`, {
+      await axios.put(`/notices/${editingNoticeId}`, {
         title: noticeTitle,
         content: noticeContent
       });
@@ -186,45 +179,30 @@ const AdminPage = ({ username }) => {
       setEditingNoticeId(null);
       fetchNotices(); // 공지사항 목록 새로고침
     } catch (error) {
-      console.error('공지사항 수정 중 오류:', error);
+      console.error('공지사항 수정 중 오류:', error.response ? error.response.data : error.message);
       alert('공지사항 수정에 실패했습니다.');
     }
   };
 
   const fetchNotices = async () => {
     try {
-      const response = await axios.get('/api/notices');
+      const response = await axios.get('/notices');
       setNotices(response.data);
     } catch (error) {
-      console.error('공지사항 조회 중 오류:', error);
+      console.error('공지사항 조회 중 오류:', error.response ? error.response.data : error.message);
     }
   };
 
-  useEffect(() => {
-    fetchWorkStatistics();
-    fetchNotices(); // 공지사항 가져오기
-  }, [selectedDate]);
-
-  const handleResetDatabase = async () => {
-    if (window.confirm("데이터베이스의 모든 데이터를 초기화하시겠습니까?")) {
+  const resetDatabase = async () => {
+    if (window.confirm("정말로 데이터베이스를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
       try {
-        const response = await axios.delete('/api/reset-database');
-        console.log("서버 응답:", response.data);
-        await fetchWorkStatistics(); // 데이터베이스 초기화 후 통계 다시 가져오기
-        alert(response.data.message || "데이터베이스가 초기화되었습니다.");
+        const response = await axios.post(`${API_URL}/reset-database`);
+        console.log(response.data.message);
+        alert('데이터베이스가 초기화되었습니다. 페이지를 새로고침합니다.');
+        window.location.reload();
       } catch (error) {
-        console.error("데이터베이스 초기화 중 오류 발생:", error);
-        if (error.response) {
-          console.error("서버 응답:", error.response.data);
-          console.error("응답 상태:", error.response.status);
-          alert(`데이터베이스 초기화 중 오류가 발생했습니다: ${error.response.data.error || error.response.statusText}`);
-        } else if (error.request) {
-          console.error("서버로부터 응답이 없습니다.");
-          alert("서버와의 통신 중 오류가 발생했습니다.");
-        } else {
-          console.error("요청 설정 중 오류:", error.message);
-          alert(`요청 중 오류가 발생했습니다: ${error.message}`);
-        }
+        console.error('데이터베이스 초기화 중 오류 발생:', error);
+        alert('데이터베이스 초기화에 실패했습니다.');
       }
     }
   };
@@ -235,6 +213,27 @@ const AdminPage = ({ username }) => {
       name.toLowerCase().includes(searchName.toLowerCase())
     );
   }, [workStatistics, searchName]);
+
+  const calculateSumAndPay = useMemo(() => (weights) => {
+    const sum = Object.values(weights).reduce((acc, val) => acc + (val || 0), 0);
+    const pay = Math.floor(sum * 270);
+    return {
+      sum,
+      pay: new Intl.NumberFormat('ko-KR').format(pay) + "원",
+    };
+  }, []);
+
+  const handleWorkRegistration = async (date, workData) => {
+    try {
+      const response = await axios.post('/employee/work/bulk', { date, workData });
+      console.log('작업 일괄 저장 응답:', response.data);
+      alert("작업이 성공적으로 저장되었습니다.");
+      fetchWorkStatistics();
+    } catch (error) {
+      console.error('작업 데이터 일괄 저장 중 오류 발생:', error.response ? error.response.data : error.message);
+      alert("작업 저장에 실패했습니다.");
+    }
+  };
 
   return (
     <div className="admin-container">
@@ -285,7 +284,7 @@ const AdminPage = ({ username }) => {
         <button
           className="reset-button"
           onClick={() => {
-            handleResetDatabase();
+            resetDatabase();
             setMenuOpen(false);
           }}
         >
@@ -294,7 +293,9 @@ const AdminPage = ({ username }) => {
       </div>
 
       <div className="admin-content">
-        {activeTab === "작업등록" && <WorkRegistration onConfirm={handleConfirm} />}
+        {activeTab === "작업등록" && (
+          <WorkRegistration onConfirm={handleWorkRegistration} />
+        )}
         {activeTab === "작업량통계" && (
           <div>
             <h2 className="admin-section-title">작업량 통계</h2>
@@ -319,7 +320,12 @@ const AdminPage = ({ username }) => {
                       {datesWithData.map((day) => (
                         <th key={day} className="date-column">
                           {day}
-                          <button onClick={() => handleDeleteDay(day)} className="delete-button">X</button>
+                          <span 
+                            className="delete-day" 
+                            onClick={() => handleDeleteDay(day)}
+                          >
+                            ❌
+                          </span>
                         </th>
                       ))}
                       <th>합계</th>

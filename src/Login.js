@@ -11,7 +11,7 @@ import "./Login.css";
 
 const API_URL = process.env.NODE_ENV === 'production' 
   ? '/.netlify/functions/api'
-  : 'http://localhost:5000';
+  : 'http://localhost:8888/.netlify/functions/api';
 
 const Login = ({ onLogin }) => {
   const [name, setName] = useState("");
@@ -29,13 +29,9 @@ const Login = ({ onLogin }) => {
     setErrorMessage("");
     try {
       const response = await axios.post(`${API_URL}/login`, { name, password });
-      console.log('Login response:', response.data);
-      
-      if (password === '0000') {
-        console.log('Initial password detected, showing password change form');
+      if (response.data.isInitialPassword) {
         setShowChangePassword(true);
       } else {
-        console.log('Normal login, proceeding to main page');
         onLogin(response.data.name, response.data.role);
         if (response.data.role === 'admin') {
           navigate('/admin');
@@ -45,16 +41,7 @@ const Login = ({ onLogin }) => {
       }
     } catch (error) {
       console.error('로그인 중 오류 발생:', error);
-      if (error.response) {
-        // 서버 응답이 있는 경우
-        setErrorMessage(error.response.data.error || "로그인에 실패했습니다.");
-      } else if (error.request) {
-        // 요청이 전송되었지만 응답을 받지 못한 경우
-        setErrorMessage("서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.");
-      } else {
-        // 요청 설정 중 오류가 발생한 경우
-        setErrorMessage("로그인 요청 중 오류가 발생했습니다.");
-      }
+      setErrorMessage(error.response?.data?.error || "로그인에 실패했습니다.");
     }
   };
 
@@ -65,7 +52,8 @@ const Login = ({ onLogin }) => {
       return;
     }
     try {
-      const response = await axios.post(`${API_URL}/api/change-password`, { name, newPassword });
+      const response = await axios.post(`${API_URL}/change-password`, { name, newPassword });
+      console.log('비밀번호 변경 응답:', response.data);
       if (response.data.message === "비밀번호가 성공적으로 변경되었습니다.") {
         alert("비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해주세요.");
         setShowChangePassword(false);
@@ -76,13 +64,7 @@ const Login = ({ onLogin }) => {
       }
     } catch (error) {
       console.error('비밀번호 변경 중 오류 발생:', error);
-      if (error.response) {
-        setErrorMessage(error.response.data.error || "비밀번호 변경에 실패했습니다.");
-      } else if (error.request) {
-        setErrorMessage("서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.");
-      } else {
-        setErrorMessage("비밀번호 변경 요청 중 오류가 발생했습니다.");
-      }
+      setErrorMessage(error.response?.data?.error || "비밀번호 변경에 실패했습니다.");
     }
   };
 
