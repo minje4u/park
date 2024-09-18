@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const Employee = require('../src/models/Employee'); // 모델 경로 조정 필요
-const Work = require('../src/models/work'); // 모델 경로 조정 필요
-const Notice = require('../src/models/Notice'); // 모델 경로 조정 필요
+const Employee = require('./models/Employee');
+const Work = require('./models/work');
+const Notice = require('./models/Notice');
 
 let conn = null;
 
