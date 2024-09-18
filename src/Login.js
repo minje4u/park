@@ -1,9 +1,17 @@
+//https://app.netlify.com/sites/parkkk
+//URL:       https://parkkk.netlify.app
+//Site ID:   73ef588a-2a70-4b2e-a493-12ce4eb01b80
+
+
+
 import React, { useState } from "react";
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import "./Login.css";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? '/.netlify/functions/api'
+  : 'http://localhost:5000';
 
 const Login = ({ onLogin }) => {
   const [name, setName] = useState("");
@@ -20,7 +28,7 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
     setErrorMessage("");
     try {
-      const response = await axios.post(`${API_URL}/api/login`, { name, password });
+      const response = await axios.post(`${API_URL}/login`, { name, password });
       console.log('Login response:', response.data);
       
       if (password === '0000') {

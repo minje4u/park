@@ -30,7 +30,7 @@ const WorkerPage = () => {
   const fetchWorkerData = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`http://localhost:5000/api/worker/${encodeURIComponent(username)}`);
+      const response = await axios.get(`/.netlify/functions/api/worker/${encodeURIComponent(username)}`);
       const data = response.data;
       const today = new Date().toISOString().split('T')[0];
       const todayEntry = data.find(item => item.날짜 === today);
@@ -45,7 +45,7 @@ const WorkerPage = () => {
 
   const fetchNotices = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/notices');
+      const response = await axios.get('/.netlify/functions/api/notices');
       setNotices(response.data);
     } catch (error) {
       console.error('공지사항 조회 중 오류 발생:', error);
@@ -54,7 +54,7 @@ const WorkerPage = () => {
 
   const checkFortuneStatus = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/fortune-status/${username}`);
+      const response = await axios.get(`/.netlify/functions/api/fortune-status/${username}`);
       setFortuneClicked(response.data.clicked);
       if (response.data.fortune) {
         setFortune(response.data.fortune);
@@ -67,7 +67,7 @@ const WorkerPage = () => {
   const getFortuneOfTheDay = async () => {
     if (!fortuneClicked) {
       try {
-        const response = await axios.post(`http://localhost:5000/api/get-fortune/${username}`);
+        const response = await axios.post(`/.netlify/functions/api/get-fortune/${username}`);
         setFortune(response.data.fortune);
         setFortuneClicked(true);
       } catch (error) {

@@ -4,7 +4,7 @@ import EmployeeManagement from "./EmployeeManagement";
 import "./AdminPage.css"; 
 import axios from 'axios';
 
-axios.defaults.baseURL = 'http://localhost:5000';
+axios.defaults.baseURL = '/.netlify/functions/api';
 axios.defaults.withCredentials = true;
 
 const formatWorkData = (data) => {
