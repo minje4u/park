@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import axios from 'axios';
 import "./WorkerPage.css";
 
-const API_URL = process.env.REACT_APP_API_URL === 'production' 
+const API_URL = process.env.NODE_ENV === 'production'
   ? '/.netlify/functions/api'
   : 'http://localhost:8888/.netlify/functions/api';
 

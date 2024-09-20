@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from 'axios';
 import "./EmployeeManagement.css";
 
-const API_URL = process.env.REACT_APP_API_URL === 'production' 
+const API_URL = process.env.NODE_ENV === 'production'
   ? '/.netlify/functions/api'
   : 'http://localhost:8888/.netlify/functions/api';
 
