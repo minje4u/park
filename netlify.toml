@@ -14,9 +14,11 @@
   status = 200
 
 [[headers]]
-  for = "/manifest.json"
+  for = "/*"
   [headers.values]
-    Content-Type = "application/manifest+json"
+    Access-Control-Allow-Origin = "https://parkpa.netlify.app"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept"
 
 [functions]
   directory = "functions"

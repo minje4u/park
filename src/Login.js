@@ -9,9 +9,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import "./Login.css";
 
-const API_URL = process.env.REACT_APP_API_URL === 'production' 
-  ? '/.netlify/functions/api'
-  : 'http://localhost:8888/.netlify/functions/api';
+// API_URL 설정을 수정합니다.
+const API_URL = process.env.REACT_APP_API_URL || '/.netlify/functions/api';
 
 const Login = ({ onLogin }) => {
   const [name, setName] = useState("");
@@ -28,6 +27,7 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
     setErrorMessage("");
     try {
+      // API 요청 URL을 수정합니다.
       const response = await axios.post(`${API_URL}/login`, { name, password });
       if (response.data.isInitialPassword) {
         setShowChangePassword(true);
@@ -52,6 +52,7 @@ const Login = ({ onLogin }) => {
       return;
     }
     try {
+      // API 요청 URL을 수정합니다.
       const response = await axios.post(`${API_URL}/change-password`, { name, newPassword });
       console.log('비밀번호 변경 응답:', response.data);
       if (response.data.message === "비밀번호가 성공적으로 변경되었습니다.") {

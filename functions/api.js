@@ -12,10 +12,21 @@ const cors = require('cors');
 const app = express();
 const router = express.Router();
 
+// CORS 미들웨어 설정
 app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'https://parkpa.netlify.app',
+      'http://localhost:3000',
+      'https://admin.parkpa.netlify.app'
+    ];
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true,
 }));
 
 // JSON 파싱 미들웨어 추가
@@ -341,4 +352,6 @@ connectDB().then(() => {
 });
 
 const handler = serverless(app);
+module.exports = { handler };
+
 module.exports = { handler };
