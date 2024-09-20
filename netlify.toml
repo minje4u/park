@@ -27,3 +27,6 @@
 [functions.api]
   included_files = ["functions/models/**"]
   timeout = 30
+
+[build.environment]
+  REACT_APP_API_URL = "/.netlify/functions/api"
