@@ -85,10 +85,12 @@ const AdminPage = ({ username }) => {
     }
   }, []);
 
+ 
   useEffect(() => {
     console.log("컴포넌트 마운트 또는 selectedDate 변경");
     fetchWorkStatistics();
     fetchNotices();
+   
   }, [selectedDate, fetchWorkStatistics, fetchNotices]);
 
   useEffect(() => {
@@ -360,7 +362,9 @@ const AdminPage = ({ username }) => {
             )}
           </div>
         )}
-        {activeTab === "작업자관리" && <EmployeeManagement />}
+        {activeTab === "작업자관리" && (
+          <EmployeeManagement />
+        )}
         {activeTab === "공지사항" && (
           <div className="notice-section">
             <h2 className="section-title">공지사항 게시판</h2>

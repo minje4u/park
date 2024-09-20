@@ -11,6 +11,7 @@ const EmployeeManagement = () => {
   const [newEmployeeName, setNewEmployeeName] = useState("");
   const [newEmployeeID, setNewEmployeeID] = useState("");
   const [newEmployeeRole, setNewEmployeeRole] = useState("worker");
+  const [editingEmployee, setEditingEmployee] = useState(null);
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -79,6 +80,22 @@ const EmployeeManagement = () => {
     }
   };
 
+  const handleEditEmployee = (employee) => {
+    setEditingEmployee(employee);
+  };
+
+  const handleUpdateEmployee = async () => {
+    try {
+      await axios.put(`${API_URL}/employees/${editingEmployee._id}`, editingEmployee);
+      alert("작업자 정보가 수정되었습니다.");
+      setEditingEmployee(null);
+      fetchEmployees();
+    } catch (error) {
+      console.error('작업자 수정 중 오류 발생:', error);
+      alert('작업자 수정에 실패했습니다.');
+    }
+  };
+
   return (
     <div className="employee-management">
       <h2>작업자 관리</h2>
@@ -121,12 +138,52 @@ const EmployeeManagement = () => {
             <tbody>
               {employees.map((employee) => (
                 <tr key={employee._id}>
-                  <td>{employee.employeeId}</td>
-                  <td>{employee.name}</td>
-                  <td>{employee.role === 'admin' ? '관리자' : '작업자'}</td>
                   <td>
-                    <button onClick={() => handleDeleteEmployee(employee._id, employee.name)}>삭제</button>
-                    <button onClick={() => showLoginRecords(employee.name)}>접속기록</button>
+                    {editingEmployee && editingEmployee._id === employee._id ? (
+                      <input
+                        value={editingEmployee.employeeId}
+                        onChange={(e) => setEditingEmployee({...editingEmployee, employeeId: e.target.value})}
+                      />
+                    ) : (
+                      employee.employeeId
+                    )}
+                  </td>
+                  <td>
+                    {editingEmployee && editingEmployee._id === employee._id ? (
+                      <input
+                        value={editingEmployee.name}
+                        onChange={(e) => setEditingEmployee({...editingEmployee, name: e.target.value})}
+                      />
+                    ) : (
+                      employee.name
+                    )}
+                  </td>
+                  <td>
+                    {editingEmployee && editingEmployee._id === employee._id ? (
+                      <select
+                        value={editingEmployee.role}
+                        onChange={(e) => setEditingEmployee({...editingEmployee, role: e.target.value})}
+                      >
+                        <option value="worker">작업자</option>
+                        <option value="admin">관리자</option>
+                      </select>
+                    ) : (
+                      employee.role === 'admin' ? '관리자' : '작업자'
+                    )}
+                  </td>
+                  <td>
+                    {editingEmployee && editingEmployee._id === employee._id ? (
+                      <>
+                        <button onClick={handleUpdateEmployee}>저장</button>
+                        <button onClick={() => setEditingEmployee(null)}>취소</button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => handleEditEmployee(employee)}>수정</button>
+                        <button onClick={() => handleDeleteEmployee(employee._id, employee.name)}>삭제</button>
+                        <button onClick={() => showLoginRecords(employee.name)}>접속기록</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
