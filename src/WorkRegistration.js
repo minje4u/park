@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 // import axios from 'axios'; // axios import 제거
 import * as XLSX from 'xlsx';
+import axios from 'axios'; // axios import 추가
 
 const WorkRegistration = ({ onConfirm }) => {
   const [selectedDate, setSelectedDate] = useState("");
@@ -45,7 +46,7 @@ const WorkRegistration = ({ onConfirm }) => {
     reader.readAsArrayBuffer(file);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedDate || !selectedFile) {
       setErrorMessage("날짜와 파일을 선택해주세요.");
@@ -65,12 +66,20 @@ const WorkRegistration = ({ onConfirm }) => {
     // 날짜를 'YYYY-MM-DD' 형식의 문자열로 변환
     const formattedDate = new Date(selectedDate).toISOString().split('T')[0];
 
-    console.log("전송할 데이터:", { date: formattedDate, workData });
-    onConfirm(formattedDate, workData);
-    setConfirmationMessage(`${formattedDate} 작업이 등록되었습니다.`);
-    setErrorMessage("");
-    setSelectedFile(null);
-    setFilteredContent([]);
+    try {
+      // 서버에 데이터 전송
+      await axios.post('/work-registration', { date: formattedDate, workData });
+      
+      console.log("전송할 데이터:", { date: formattedDate, workData });
+      onConfirm(formattedDate, workData);
+      setConfirmationMessage(`${formattedDate} 작업이 등록되었습니다.`);
+      setErrorMessage("");
+      setSelectedFile(null);
+      setFilteredContent([]);
+    } catch (error) {
+      console.error("작업 등록 중 오류 발생:", error);
+      setErrorMessage("작업 등록에 실패했습니다. 다시 시도해주세요.");
+    }
   };
 
   return (
