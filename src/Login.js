@@ -10,7 +10,9 @@ import { useNavigate } from 'react-router-dom';
 import "./Login.css";
 
 // API_URL 설정을 수정합니다.
-const API_URL = process.env.REACT_APP_API_URL || '/.netlify/functions/api';
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? '/.netlify/functions/api'
+  : 'http://localhost:8888/.netlify/functions/api';
 
 const Login = ({ onLogin }) => {
   const [name, setName] = useState("");
@@ -26,6 +28,8 @@ const Login = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    console.log('API_URL:', API_URL);
+    console.log('Full request URL:', `${API_URL}/login`);
     try {
       // API 요청 URL을 수정합니다.
       const response = await axios.post(`${API_URL}/login`, { name, password });
