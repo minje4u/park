@@ -18,7 +18,8 @@ const PasswordChangePage = () => {
 
     try {
       const username = localStorage.getItem('username'); // 로컬 스토리지에서 사용자 이름 가져오기
-      const response = await axios.post('http://localhost:5000/api/change-password', {
+      const API_URL = process.env.REACT_APP_API_URL || '/.netlify/functions/api';
+      const response = await axios.post(`${API_URL}/change-password`, {
         username,
         currentPassword,
         newPassword

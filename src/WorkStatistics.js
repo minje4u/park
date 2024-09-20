@@ -12,7 +12,8 @@ const WorkStatistics = () => {
     const fetchWorkData = async () => {
       try {
         // MongoDB에서 작업 데이터 가져오기
-        const response = await axios.get("/api/employee/work");
+        const API_URL = process.env.REACT_APP_API_URL || '/.netlify/functions/api';
+        const response = await axios.get(`${API_URL}/employee/work`);
         setWorkData(response.data);
       } catch (error) {
         setErrorMessage("작업 데이터를 불러오는 중 오류 발생: " + error.message);

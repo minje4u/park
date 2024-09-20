@@ -17,7 +17,8 @@ const PasswordChange = ({ username }) => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/api/change-password', {
+      const API_URL = process.env.REACT_APP_API_URL || '/.netlify/functions/api';
+      const response = await axios.post(`${API_URL}/change-password`, {
         username,
         currentPassword,
         newPassword

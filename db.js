@@ -1,8 +1,9 @@
 const mongoose = require("mongoose");
+require('dotenv').config();
 
 const connectDB = async () => {
   try {
-    await mongoose.connect("mongodb+srv://park:1234@cluster0.defae.mongodb.net/myDatabase?retryWrites=true&w=majority");
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log("MongoDB에 성공적으로 연결되었습니다.");
   } catch (error) {
     console.error("MongoDB 연결 실패:", error.message);

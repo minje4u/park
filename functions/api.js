@@ -29,13 +29,18 @@ let conn = null;
 const connectDB = async () => {
   if (conn == null) {
     console.log('Connecting to MongoDB...');
-    conn = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-    console.log('MongoDB connected successfully');
-    await createInitialAdminAccount();
+    try {
+      conn = await mongoose.connect(process.env.MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000,
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+      });
+      console.log('MongoDB connected successfully');
+      await createInitialAdminAccount();
+    } catch (error) {
+      console.error('MongoDB connection error:', error);
+      throw error;
+    }
   }
   return conn;
 };
@@ -60,10 +65,9 @@ const createInitialAdminAccount = async () => {
     console.error('초기 관리자 계정 생성 중 오류 발생:', error);
   }
 };
-
 // 로그인 라우트
 router.post('/login', async (req, res) => {
-  console.log('Login request received:', req.body);
+  // console.log('Login request received:', req.body);
   try {
     await connectDB();
     const { name, password } = req.body;
