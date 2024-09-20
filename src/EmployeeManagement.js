@@ -1,57 +1,36 @@
-// src/EmployeeManagement.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from 'axios';
 import "./EmployeeManagement.css";
 
-const EmployeeManagement = () => {
-  const [employees, setEmployees] = useState([]);
-  const [lockedAccounts, setLockedAccounts] = useState({});
-  const [newEmployeeName, setNewEmployeeName] = useState("");
-  const [newEmployeeID, setNewEmployeeID] = useState("");
-  const [newEmployeeRole, setNewEmployeeRole] = useState("worker");
-  const [newEmployeePassword, setNewEmployeePassword] = useState("0000");
-  const [noticeTitle, setNoticeTitle] = useState("");
-  const [noticeContent, setNoticeContent] = useState("");
-  const [works, setWorks] = useState([]);
-
-// API_URL 정의 확인
 const API_URL = process.env.NODE_ENV === 'production' 
   ? '/.netlify/functions/api'
   : 'http://localhost:8888/.netlify/functions/api';
 
+const EmployeeManagement = () => {
+  const [employees, setEmployees] = useState([]);
+  const [newEmployeeName, setNewEmployeeName] = useState("");
+  const [newEmployeeID, setNewEmployeeID] = useState("");
+  const [newEmployeeRole, setNewEmployeeRole] = useState("worker");
+
+  const fetchEmployees = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/employees`);
+      console.log('Fetched employees:', response.data);
+      if (Array.isArray(response.data)) {
+        setEmployees(response.data);
+      } else {
+        console.error('Fetched data is not an array:', response.data);
+        setEmployees([]);
+      }
+    } catch (error) {
+      console.error('직원 정보를 가져오는 데 실패했습니다:', error.response ? error.response.data : error.message);
+      setEmployees([]);
+    }
+  }, []);
 
   useEffect(() => {
     fetchEmployees();
-    fetchWorks();  // 컴포넌트가 마운트될 때 작업 정보도 가져옵니다.
-    const locked = JSON.parse(localStorage.getItem("lockedAccounts")) || {};
-    setLockedAccounts(locked);
-  }, []);
-
-  const fetchEmployees = async () => {
-     try {
-       const response = await axios.get(`${API_URL}/employees`);
-       console.log('Fetched employees:', response.data);
-       if (Array.isArray(response.data)) {
-         setEmployees(response.data);
-       } else {
-         console.error('Fetched data is not an array:', response.data);
-         setEmployees([]); // 빈 배열로 설정
-       }
-     } catch (error) {
-       console.error('직원 정보를 가져오는 데 실패했습니다:', error.response ? error.response.data : error.message);
-       setEmployees([]); // 오류 발생 시 빈 배열로 설정
-     }
-   };
-
-   const fetchWorks = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/works`);
-      console.log('Fetched works:', response.data);
-      setWorks(response.data);
-    } catch (error) {
-      console.error('작업 정보를 가져오는 데 실패했습니다:', error);
-    }
-  };
+  }, [fetchEmployees]);
 
   const addEmployee = async () => {
     if (newEmployeeName === "" || newEmployeeID === "") {
@@ -60,7 +39,7 @@ const API_URL = process.env.NODE_ENV === 'production'
     }
 
     try {
-      const response = await axios.post(`${API_URL}/employees`, {
+      await axios.post(`${API_URL}/employees`, {
         name: newEmployeeName,
         employeeId: newEmployeeID,
         role: newEmployeeRole,
@@ -83,40 +62,10 @@ const API_URL = process.env.NODE_ENV === 'production'
       try {
         await axios.delete(`${API_URL}/employees/${employeeId}`);
         alert(`${employeeName} 작업자가 삭제되었습니다.`);
-        fetchEmployees(); // 작업자 목록 새로고침
+        fetchEmployees();
       } catch (error) {
         console.error('작업자 삭제 중 오류 발생:', error);
         alert('작업자 삭제에 실패했습니다.');
-      }
-    }
-  };
-
-
-  const handleUnlockAccount = (name) => {
-    const updatedLockedAccounts = { ...lockedAccounts };
-    delete updatedLockedAccounts[name];
-    setLockedAccounts(updatedLockedAccounts);
-    localStorage.setItem("lockedAccounts", JSON.stringify(updatedLockedAccounts));
-  };
-
-  const deleteEmployee = async (id, name) => {
-    if (
-      window.confirm(`정말 ${name}님의 계정을 삭제하시겠습니까?`) &&
-      window.confirm("이 작업은 되돌릴 수 없습니다. 다시 확인해주세요.") &&
-      window.confirm("마지막으로, 계정을 삭제하시겠습니까?")
-    ) {
-      try {
-        await axios.delete(`${API_URL}/employees/${id}`);
-        alert(`${name}님의 계정이 삭제되었습니다.`);
-        fetchEmployees();
-
-        const updatedLockedAccounts = { ...lockedAccounts };
-        delete updatedLockedAccounts[name];
-        setLockedAccounts(updatedLockedAccounts);
-        localStorage.setItem("lockedAccounts", JSON.stringify(updatedLockedAccounts));
-      } catch (error) {
-        console.error('직원 삭제 중 오류 발생:', error);
-        alert("직원 삭제 중 오류가 발생했습니다.");
       }
     }
   };
@@ -127,44 +76,6 @@ const API_URL = process.env.NODE_ENV === 'production'
       alert(`${name}님의 접속 기록이 없습니다.`);
     } else {
       alert(`${name}님의 접속 기록:\n` + records[name].join("\n"));
-    }
-  };
-
-  const changePassword = async (id, name) => {
-    const newPassword = prompt(`${name}님의 새 비밀번호를 입력하세요:`);
-    if (newPassword) {
-      try {
-        await axios.put(`${API_URL}/employees/${id}/password`, { password: newPassword });
-        alert(`${name}님의 비밀번호가 변경되었습니다.`);
-      } catch (error) {
-        console.error('비밀번호 변경 중 오류 발생:', error);
-        alert("비밀번호 변경 중 오류가 발생했습니다.");
-      }
-    }
-  };
-
-  const addNotice = async () => {
-    if (noticeTitle.trim() === "" || noticeContent.trim() === "") {
-      alert("제목과 내용을 모두 입력해주세요.");
-      return;
-    }
-
-    try {
-      const response = await axios.post(`${API_URL}/notices`, {
-        title: noticeTitle,
-        content: noticeContent
-      });
-      
-      if (response.data.message === "공지사항이 등록되었습니다.") {
-        alert("새 공지사항이 등록되었습니다.");
-        setNoticeTitle("");
-        setNoticeContent("");
-      } else {
-        alert("공지사항 등록에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error('공지사항 등록 중 오류 발생:', error);
-      alert("공지사항 등록 중 오류가 발생했습니다: " + error.response?.data?.error || error.message);
     }
   };
 

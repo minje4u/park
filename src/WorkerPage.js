@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import axios from 'axios';
 import "./WorkerPage.css";
 
@@ -9,7 +9,6 @@ const API_URL = process.env.NODE_ENV === 'production'
 
 const WorkerPage = () => {
   const { username } = useParams();
-  const navigate = useNavigate();
   const [workerData, setWorkerData] = useState([]);
   const [todayData, setTodayData] = useState(null);
   const [currentMonth, setCurrentMonth] = useState('');
@@ -19,19 +18,7 @@ const WorkerPage = () => {
   const [fortune, setFortune] = useState('');
   const [fortuneClicked, setFortuneClicked] = useState(false);
 
-  useEffect(() => {
-    fetchWorkerData();
-    fetchNotices();
-    checkFortuneStatus();
-    setCurrentMonth(getCurrentMonth());
-  }, [username]);
-
-  const getCurrentMonth = () => {
-    const now = new Date();
-    return `${now.getFullYear()}년 ${now.getMonth() + 1}월`;
-  };
-
-  const fetchWorkerData = async () => {
+  const fetchWorkerData = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await axios.get(`${API_URL}/worker/${encodeURIComponent(username)}`);
@@ -45,18 +32,9 @@ const WorkerPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [username]);
 
-  const fetchNotices = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/notices`);
-      setNotices(response.data);
-    } catch (error) {
-      console.error('공지사항 조회 중 오류 발생:', error);
-    }
-  };
-
-  const checkFortuneStatus = async () => {
+  const checkFortuneStatus = useCallback(async () => {
     try {
       const response = await axios.get(`${API_URL}/fortune-status/${username}`);
       setFortuneClicked(response.data.clicked);
@@ -65,6 +43,27 @@ const WorkerPage = () => {
       }
     } catch (error) {
       console.error('운세 상태 확인 중 오류 발생:', error);
+    }
+  }, [username]);
+
+  useEffect(() => {
+    checkFortuneStatus();
+    fetchWorkerData();
+    fetchNotices();
+    setCurrentMonth(getCurrentMonth());
+  }, [checkFortuneStatus, fetchWorkerData]);
+
+  const getCurrentMonth = () => {
+    const now = new Date();
+    return `${now.getFullYear()}년 ${now.getMonth() + 1}월`;
+  };
+
+  const fetchNotices = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/notices`);
+      setNotices(response.data);
+    } catch (error) {
+      console.error('공지사항 조회 중 오류 발생:', error);
     }
   };
 

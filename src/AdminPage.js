@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import WorkRegistration from "./WorkRegistration";
 import EmployeeManagement from "./EmployeeManagement";
 import "./AdminPage.css"; 
@@ -58,7 +58,7 @@ const AdminPage = ({ username }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchName, setSearchName] = useState("");
 
-  const fetchWorkStatistics = async () => {
+  const fetchWorkStatistics = useCallback(async () => {
     try {
       console.log("작업 통계 요청 시작");
       const response = await axios.get('/employee/work', {
@@ -74,13 +74,22 @@ const AdminPage = ({ username }) => {
     } catch (error) {
       console.error("작업량 통계를 가져오는 중 오류 발생:", error.response ? error.response.data : error.message);
     }
-  };
+  }, [selectedDate]);
+
+  const fetchNotices = useCallback(async () => {
+    try {
+      const response = await axios.get('/notices');
+      setNotices(response.data);
+    } catch (error) {
+      console.error('공지사항 조회 중 오류:', error.response ? error.response.data : error.message);
+    }
+  }, []);
 
   useEffect(() => {
     console.log("컴포넌트 마운트 또는 selectedDate 변경");
     fetchWorkStatistics();
     fetchNotices();
-  }, [selectedDate]);
+  }, [selectedDate, fetchWorkStatistics, fetchNotices]);
 
   useEffect(() => {
     const dates = getDatesWithData(workStatistics);
@@ -88,7 +97,7 @@ const AdminPage = ({ username }) => {
     setDatesWithData(dates);
   }, [workStatistics]);
 
-  const handleDeleteDay = async (day) => {
+  const handleDeleteDay = useCallback(async (day) => {
     if (window.confirm(`${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월 ${day}일 데이터를 삭제하시겠습니까?`) &&
         window.confirm("정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
       try {
@@ -127,9 +136,9 @@ const AdminPage = ({ username }) => {
         alert('데이터 삭제 중 오류가 발생했습니다.');
       }
     }
-  };
+  }, [selectedDate, fetchWorkStatistics]);
 
-  const handleNoticeSubmit = async (e) => {
+  const handleNoticeSubmit = useCallback(async (e) => {
     e.preventDefault();
     console.log('공지사항 등록 시도:', { title: noticeTitle, content: noticeContent }); // 로그 추가
     try {
@@ -146,9 +155,9 @@ const AdminPage = ({ username }) => {
       console.error('공지사항 등록 중 오류:', error.response ? error.response.data : error.message); // 로그 추가
       alert('공지사항 등록에 실패했습니다.');
     }
-  };
+  }, [noticeTitle, noticeContent, fetchNotices]);
 
-  const handleDeleteNotice = async (id) => {
+  const handleDeleteNotice = useCallback(async (id) => {
     if (window.confirm('정말로 이 공지사항을 삭제하시겠습니까?')) {
       try {
         await axios.delete(`/notices/${id}`);
@@ -159,15 +168,15 @@ const AdminPage = ({ username }) => {
         alert('공지사항 삭제에 실패했습니다.');
       }
     }
-  };
+  }, [fetchNotices]);
 
-  const handleEditNotice = (notice) => {
+  const handleEditNotice = useCallback((notice) => {
     setNoticeTitle(notice.title);
     setNoticeContent(notice.content);
     setEditingNoticeId(notice._id);
-  };
+  }, []);
 
-  const handleUpdateNotice = async () => {
+  const handleUpdateNotice = useCallback(async () => {
     try {
       await axios.put(`/notices/${editingNoticeId}`, {
         title: noticeTitle,
@@ -182,18 +191,9 @@ const AdminPage = ({ username }) => {
       console.error('공지사항 수정 중 오류:', error.response ? error.response.data : error.message);
       alert('공지사항 수정에 실패했습니다.');
     }
-  };
+  }, [editingNoticeId, noticeTitle, noticeContent, fetchNotices]);
 
-  const fetchNotices = async () => {
-    try {
-      const response = await axios.get('/notices');
-      setNotices(response.data);
-    } catch (error) {
-      console.error('공지사항 조회 중 오류:', error.response ? error.response.data : error.message);
-    }
-  };
-
-  const resetDatabase = async () => {
+  const resetDatabase = useCallback(async () => {
     if (window.confirm("정말로 데이터베이스를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
       try {
         const response = await axios.post(`${API_URL}/reset-database`);
@@ -205,7 +205,7 @@ const AdminPage = ({ username }) => {
         alert('데이터베이스 초기화에 실패했습니다.');
       }
     }
-  };
+  }, []);
 
   const filteredEmployees = useMemo(() => {
     if (!searchName.trim()) return Object.keys(workStatistics);
@@ -214,16 +214,7 @@ const AdminPage = ({ username }) => {
     );
   }, [workStatistics, searchName]);
 
-  const calculateSumAndPay = useMemo(() => (weights) => {
-    const sum = Object.values(weights).reduce((acc, val) => acc + (val || 0), 0);
-    const pay = Math.floor(sum * 270);
-    return {
-      sum,
-      pay: new Intl.NumberFormat('ko-KR').format(pay) + "원",
-    };
-  }, []);
-
-  const handleWorkRegistration = async (date, workData) => {
+  const handleWorkRegistration = useCallback(async (date, workData) => {
     try {
       const response = await axios.post('/employee/work/bulk', { date, workData });
       console.log('작업 일괄 저장 응답:', response.data);
@@ -233,6 +224,10 @@ const AdminPage = ({ username }) => {
       console.error('작업 데이터 일괄 저장 중 오류 발생:', error.response ? error.response.data : error.message);
       alert("작업 저장에 실패했습니다.");
     }
+  }, [fetchWorkStatistics]);
+
+  const handleDateChange = (event) => {
+    setSelectedDate(new Date(event.target.value));
   };
 
   return (
@@ -299,6 +294,13 @@ const AdminPage = ({ username }) => {
         {activeTab === "작업량통계" && (
           <div>
             <h2 className="admin-section-title">작업량 통계</h2>
+            <div className="date-picker">
+              <input
+                type="date"
+                value={selectedDate.toISOString().split('T')[0]}
+                onChange={handleDateChange}
+              />
+            </div>
             <div className="search-container">
               <input
                 type="text"

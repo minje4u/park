@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+// import axios from 'axios'; // axios import 제거
 import * as XLSX from 'xlsx';
 
 const WorkRegistration = ({ onConfirm }) => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
-  const [fileContent, setFileContent] = useState([]); // 파일 내용을 저장할 상태
   const [filteredContent, setFilteredContent] = useState([]); // 필터링된 내용을 저장할 상태
   const [confirmationMessage, setConfirmationMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -35,7 +34,7 @@ const WorkRegistration = ({ onConfirm }) => {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
-      setFileContent(jsonData); // 파일 내용을 상태에 저장
+      // setFileContent(jsonData); // 파일 내용을 상태에 저장
 
       // 조 3만 추출하고 중량이 0 이상인 항목 필터링
       const filteredData = jsonData.filter(
@@ -71,7 +70,6 @@ const WorkRegistration = ({ onConfirm }) => {
     setConfirmationMessage(`${formattedDate} 작업이 등록되었습니다.`);
     setErrorMessage("");
     setSelectedFile(null);
-    setFileContent([]);
     setFilteredContent([]);
   };
 
