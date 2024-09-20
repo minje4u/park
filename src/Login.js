@@ -1,22 +1,7 @@
-//https://app.netlify.com/sites/parkkk
-//URL:       https://parkkk.netlify.app
-//Site ID:   73ef588a-2a70-4b2e-a493-12ce4eb01b80
-
-
-
 import React, { useState } from "react";
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import "./Login.css";
-
-// API_URL 설정을 수정하고 중복을 방지하는 함수를 추가합니다.
-const API_URL = process.env.REACT_APP_API_URL || '/.netlify/functions/api';
-
-// 중복된 경로를 방지하는 함수
-const getApiUrl = (path) => {
-  const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
-  return `${baseUrl}/${path.startsWith('/') ? path.slice(1) : path}`;
-};
 
 const Login = ({ onLogin }) => {
   const [name, setName] = useState("");
@@ -27,16 +12,11 @@ const Login = ({ onLogin }) => {
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
 
-  // useEffect 부분을 제거합니다.
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-    const loginUrl = getApiUrl('/login');
-    console.log('API_URL:', API_URL);
-    console.log('Full request URL:', loginUrl);
     try {
-      const response = await axios.post(loginUrl, { name, password });
+      const response = await axios.post('/login', { name, password });
       if (response.data.isInitialPassword) {
         setShowChangePassword(true);
       } else {
@@ -60,8 +40,7 @@ const Login = ({ onLogin }) => {
       return;
     }
     try {
-      const changePasswordUrl = getApiUrl('/change-password');
-      const response = await axios.post(changePasswordUrl, { name, newPassword });
+      const response = await axios.post('/change-password', { name, newPassword });
       console.log('비밀번호 변경 응답:', response.data);
       if (response.data.message === "비밀번호가 성공적으로 변경되었습니다.") {
         alert("비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해주세요.");
