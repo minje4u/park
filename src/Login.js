@@ -9,7 +9,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import "./Login.css";
 
-const API_URL = process.env.NODE_ENV === 'production' 
+const API_URL = process.env.REACT_APP_API_URL === 'production' 
   ? '/.netlify/functions/api'
   : 'http://localhost:8888/.netlify/functions/api';
 

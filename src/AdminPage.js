@@ -4,7 +4,7 @@ import EmployeeManagement from "./EmployeeManagement";
 import "./AdminPage.css"; 
 import axios from 'axios';
 
-const API_URL = process.env.NODE_ENV === 'production' 
+const API_URL = process.env.REACT_APP_API_URL === 'production' 
   ? '/.netlify/functions/api'
   : 'http://localhost:8888/.netlify/functions/api';
 
