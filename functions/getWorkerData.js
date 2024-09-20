@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Work = require('../models/work'); // Work 모델 경로를 정확히 지정하세요
+const Work = require('./models/work'); // Work 모델 경로를 정확히 지정하세요
 
 exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;

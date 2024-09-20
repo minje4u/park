@@ -23,7 +23,7 @@
 [functions]
   directory = "functions"
   node_bundler = "esbuild"
+  included_files = ["functions/models/**"]
 
 [functions.api]
-  included_files = ["functions/models/**"]
   timeout = 30
