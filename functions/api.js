@@ -12,6 +12,13 @@ const cors = require('cors');
 const app = express();
 const router = express.Router();
 
+const getWorkerData = require('./getWorkerData');
+
+app.get('/getWorkerData', getWorkerData);
+
+module.exports.handler = serverless(app);
+
+
 // CORS 미들웨어 설정
 app.use(cors({
   origin: function (origin, callback) {

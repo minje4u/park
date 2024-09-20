@@ -16,7 +16,7 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Access-Control-Allow-Origin = "https://parkpa.netlify.app"
+    Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept"
 
@@ -24,6 +24,12 @@
   directory = "functions"
   node_bundler = "esbuild"
   included_files = ["functions/models/**"]
+
+[dev]
+  command = "npm run start"
+  port = 8888
+  targetPort = 3000
+  publish = "build"
 
 [functions.api]
   timeout = 30

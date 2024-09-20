@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 // import axios from 'axios'; // axios import 제거
 import * as XLSX from 'xlsx';
 import axios from 'axios'; // axios import 추가
-
+import './WorkRegistration.css';
 const WorkRegistration = ({ onConfirm }) => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
