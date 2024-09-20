@@ -2,10 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from 'axios';
 import "./EmployeeManagement.css";
 
-const API_URL = process.env.NODE_ENV === 'production'
-  ? '/.netlify/functions/api'
-  : 'http://localhost:8888/.netlify/functions/api';
-
 const EmployeeManagement = () => {
   const [employees, setEmployees] = useState([]);
   const [newEmployeeName, setNewEmployeeName] = useState("");
@@ -15,7 +11,7 @@ const EmployeeManagement = () => {
 
   const fetchEmployees = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/employees`);
+      const response = await axios.get('/employees');
       console.log('Fetched employees:', response.data);
       if (Array.isArray(response.data)) {
         setEmployees(response.data);
@@ -40,7 +36,7 @@ const EmployeeManagement = () => {
     }
 
     try {
-      await axios.post(`${API_URL}/employees`, {
+      await axios.post('/employees', {
         name: newEmployeeName,
         employeeId: newEmployeeID,
         role: newEmployeeRole,
@@ -61,7 +57,7 @@ const EmployeeManagement = () => {
   const handleDeleteEmployee = async (employeeId, employeeName) => {
     if (window.confirm(`정말로 ${employeeName} 작업자를 삭제하시겠습니까?`)) {
       try {
-        await axios.delete(`${API_URL}/employees/${employeeId}`);
+        await axios.delete(`/employees/${employeeId}`);
         alert(`${employeeName} 작업자가 삭제되었습니다.`);
         fetchEmployees();
       } catch (error) {
@@ -86,7 +82,7 @@ const EmployeeManagement = () => {
 
   const handleUpdateEmployee = async () => {
     try {
-      await axios.put(`${API_URL}/employees/${editingEmployee._id}`, editingEmployee);
+      await axios.put(`/employees/${editingEmployee._id}`, editingEmployee);
       alert("작업자 정보가 수정되었습니다.");
       setEditingEmployee(null);
       fetchEmployees();
