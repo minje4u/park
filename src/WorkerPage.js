@@ -3,10 +3,6 @@ import { useParams } from "react-router-dom";
 import axios from 'axios';
 import "./WorkerPage.css";
 
-const API_URL = process.env.NODE_ENV === 'production'
-  ? '/.netlify/functions/api'
-  : 'http://localhost:8888/.netlify/functions/api';
-
 const WorkerPage = () => {
   const { username } = useParams();
   const [workerData, setWorkerData] = useState([]);
@@ -21,7 +17,7 @@ const WorkerPage = () => {
   const fetchWorkerData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/worker/${encodeURIComponent(username)}`);
+      const response = await axios.get(`/worker/${encodeURIComponent(username)}`);
       const data = response.data;
       const today = new Date().toISOString().split('T')[0];
       const todayEntry = data.find(item => item.date.split('T')[0] === today);
@@ -36,7 +32,7 @@ const WorkerPage = () => {
 
   const checkFortuneStatus = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/fortune-status/${username}`);
+      const response = await axios.get(`/fortune-status/${username}`);
       setFortuneClicked(response.data.clicked);
       if (response.data.fortune) {
         setFortune(response.data.fortune);
@@ -60,7 +56,7 @@ const WorkerPage = () => {
 
   const fetchNotices = async () => {
     try {
-      const response = await axios.get(`${API_URL}/notices`);
+      const response = await axios.get(`/notices`);
       setNotices(response.data);
     } catch (error) {
       console.error('공지사항 조회 중 오류 발생:', error);
@@ -70,7 +66,7 @@ const WorkerPage = () => {
   const getFortuneOfTheDay = async () => {
     if (!fortuneClicked) {
       try {
-        const response = await axios.post(`${API_URL}/get-fortune/${username}`);
+        const response = await axios.post(`/get-fortune/${username}`);
         setFortune(response.data.fortune);
         setFortuneClicked(true);
       } catch (error) {
