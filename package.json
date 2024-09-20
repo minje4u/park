@@ -68,7 +68,7 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "gh-pages": "^6.1.1",
     "nodemon": "^3.1.4",
-    "npm-run-all": "^9.1.1"
+    "npm-run-all": "latest"
   },
   "homepage": "https://parkpa.netlify.app/"
 }
