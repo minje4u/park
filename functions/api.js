@@ -14,7 +14,8 @@ const router = express.Router();
 
 const getWorkerData = require('./getWorkerData');
 
-app.get('/getWorkerData', getWorkerData);
+// 그리고 라우트 정의를 다음과 같이 수정하세요
+app.get('/getWorkerData', (req, res) => getWorkerData(req, res));
 
 module.exports.handler = serverless(app);
 
@@ -360,5 +361,5 @@ connectDB().then(() => {
 
 const handler = serverless(app);
 module.exports = { handler };
-
 module.exports = { handler };
+

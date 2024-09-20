@@ -23,7 +23,7 @@
 [functions]
   directory = "functions"
   node_bundler = "esbuild"
-  included_files = ["functions/models/**"]
+  
 
 [dev]
   command = "npm run start"
