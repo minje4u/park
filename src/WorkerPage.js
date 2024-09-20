@@ -17,14 +17,23 @@ const WorkerPage = () => {
   const fetchWorkerData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`/worker/${encodeURIComponent(username)}`);
+      const response = await axios.get(`/getWorkerData?username=${encodeURIComponent(username)}`);
+      console.log('서버 응답:', response.data); // 디버깅용 로그
       const data = response.data;
-      const today = new Date().toISOString().split('T')[0];
-      const todayEntry = data.find(item => item.date.split('T')[0] === today);
-      setTodayData(todayEntry || null);
-      setWorkerData(data.filter(item => item.date.split('T')[0] !== today));
+      
+      if (Array.isArray(data) && data.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const todayEntry = data.find(item => new Date(item.date).toISOString().split('T')[0] === today);
+        setTodayData(todayEntry || null);
+        setWorkerData(data.filter(item => new Date(item.date).toISOString().split('T')[0] !== today));
+      } else {
+        setTodayData(null);
+        setWorkerData([]);
+      }
     } catch (error) {
       console.error('작업자 데이터 조회 중 오류 발생:', error);
+      setWorkerData([]);
+      setTodayData(null);
     } finally {
       setIsLoading(false);
     }
