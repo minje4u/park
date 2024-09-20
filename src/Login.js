@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import "./Login.css";
 
 // API_URL 설정을 수정합니다.
-const API_URL = '/.netlify/functions/api';
+const API_URL = '';
 
 const Login = ({ onLogin }) => {
   const [name, setName] = useState("");
@@ -30,7 +30,7 @@ const Login = ({ onLogin }) => {
     console.log('Full request URL:', `${API_URL}/login`);
     try {
       // API 요청 URL을 수정합니다.
-      const response = await axios.post(`${API_URL}/login`, { name, password });
+      const response = await axios.post('/.netlify/functions/api/login', { name, password });
       if (response.data.isInitialPassword) {
         setShowChangePassword(true);
       } else {
