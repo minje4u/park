@@ -292,15 +292,21 @@ module.exports = { handler };
 router.get('/employee/work', async (req, res) => {
   try {
     await connectDB();
-    const { employeeName } = req.query;
-    console.log('Requested employee name:', employeeName);
+    const { employeeName, year, month } = req.query;
+    console.log('Requested params:', { employeeName, year, month });
 
-    if (!employeeName) {
-      return res.status(400).json({ error: '작업자 이름이 제공되지 않았습니다.' });
+    let query = {};
+    if (year && month) {
+      const startDate = new Date(Date.UTC(year, month - 1, 1));
+      const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+      query.date = { $gte: startDate, $lte: endDate };
+    }
+    if (employeeName && employeeName !== '') {
+      query.employeeName = employeeName;
     }
 
-    const workData = await Work.find({ employeeName: employeeName }).sort({ date: -1 });
-    console.log('Found work data:', workData);
+    const workData = await Work.find(query).sort({ date: 1 });
+    console.log('Found work data:', workData.length, 'records');
 
     res.json(workData);
   } catch (error) {
