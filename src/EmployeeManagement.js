@@ -13,12 +13,12 @@ const EmployeeManagement = () => {
   const [newEmployeeName, setNewEmployeeName] = useState("");
   const [newEmployeeID, setNewEmployeeID] = useState("");
   const [newEmployeeRole, setNewEmployeeRole] = useState("worker");
-  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchEmployees = useCallback(async () => {
+    setIsLoading(true);
     try {
       const response = await axios.get('/employees');
-      console.log('Fetched employees:', response.data);
       if (Array.isArray(response.data)) {
         setEmployees(response.data);
       } else {
@@ -28,11 +28,12 @@ const EmployeeManagement = () => {
     } catch (error) {
       console.error('직원 정보를 가져오는 데 실패했습니다:', error.response ? error.response.data : error.message);
       setEmployees([]);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    console.log('Fetching employees...');
     fetchEmployees();
   }, [fetchEmployees]);
 
@@ -43,14 +44,13 @@ const EmployeeManagement = () => {
     }
 
     try {
-      const response = await axios.post('/employees', {
+      await axios.post('/employees', {
         name: newEmployeeName,
         employeeId: newEmployeeID,
         role: newEmployeeRole,
         password: "0000",
         isInitialPassword: true
       });
-      console.log("서버 응답:", response.data);
       alert("작업자가 추가되었습니다. 초기 비밀번호는 0000입니다.");
       fetchEmployees();
       setNewEmployeeName("");
@@ -58,62 +58,44 @@ const EmployeeManagement = () => {
       setNewEmployeeRole("worker");
     } catch (error) {
       console.error('작업자 추가 중 오류 발생:', error);
-      if (error.response) {
-        console.error('서버 응답:', error.response.data);
-        alert(`작업자 추가에 실패했습니다: ${error.response.data.error || '알 수 없는 오류'}`);
-      } else if (error.request) {
-        console.error('서버 응답 없음');
-        alert('서버에서 응답이 없습니다. 네트워크 연결을 확인해주세요.');
-      } else {
-        console.error('요청 설정 중 오류:', error.message);
-        alert(`요청 중 오류가 발생했습니다: ${error.message}`);
-      }
+      alert('작업자 추가에 실패했습니다.');
     }
   };
 
   const handleDeleteEmployee = async (employeeId, employeeName) => {
-    if (window.confirm(`정말로 ${employeeName} 작업자를 삭제하시겠습니까?`)) {
-      try {
-        await axios.delete(`/employees/${employeeId}`);
-        alert(`${employeeName} 작업자가 삭제되었습니다.`);
-        fetchEmployees();
-      } catch (error) {
-        console.error('작업자 삭제 중 오류 발생:', error);
-        alert('작업자 삭제에 실패했습니다.');
-      }
+    // 첫 번째 확인
+    if (!window.confirm(`${employeeName} 작업자를 삭제하시겠습니까?`)) {
+      return;
     }
-  };
-
-  const showLoginRecords = (name) => {
-    const records = JSON.parse(localStorage.getItem("loginRecords")) || {};
-    if (!records[name] || records[name].length === 0) {
-      alert(`${name}님의 접속 기록이 없습니다.`);
-    } else {
-      alert(`${name}님의 접속 기록:\n` + records[name].join("\n"));
+    
+    // 두 번째 확인
+    if (!window.confirm("정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+      return;
     }
-  };
+    
+    // 세 번째 확인: 이름 입력
+    const inputName = window.prompt(`${employeeName} 작업자를 삭제하려면 이름을 정확히 입력하세요:`);
+    
+    if (inputName !== employeeName) {
+      alert("입력한 이름이 일치하지 않습니다. 삭제가 취소되었습니다.");
+      return;
+    }
 
-  const handleEditEmployee = (employee) => {
-    setEditingEmployee(employee);
-  };
-
-  const handleUpdateEmployee = async () => {
     try {
-      await axios.put(`/employees/${editingEmployee._id}`, editingEmployee);
-      alert("작업자 정보가 수정되었습니다.");
-      setEditingEmployee(null);
+      await axios.delete(`/employees/${employeeId}`);
+      alert(`${employeeName} 작업자가 성공적으로 삭제되었습니다.`);
       fetchEmployees();
     } catch (error) {
-      console.error('작업자 수정 중 오류 발생:', error);
-      alert('작업자 수정에 실패했습니다.');
+      console.error('작업자 삭제 중 오류 발생:', error);
+      alert('작업자 삭제에 실패했습니다.');
     }
   };
 
-  console.log('Current employees state:', employees);
-
   return (
-    <div className="employee-management">
-      <h2>작업자 관리</h2>
+    <div className="employee-management-container">
+      <div className="employee-header">
+        <h2>작업자 관리</h2>
+      </div>
       <div className="employee-form">
         <input
           type="text"
@@ -140,7 +122,9 @@ const EmployeeManagement = () => {
       </div>
       <div className="employee-list">
         <h3>작업자 목록</h3>
-        {Array.isArray(employees) && employees.length > 0 ? (
+        {isLoading ? (
+          <div className="loading">데이터를 불러오는 중...</div>
+        ) : Array.isArray(employees) && employees.length > 0 ? (
           <table className="employee-table">
             <thead>
               <tr>
@@ -153,52 +137,16 @@ const EmployeeManagement = () => {
             <tbody>
               {employees.map((employee) => (
                 <tr key={employee._id}>
-                  <td>
-                    {editingEmployee && editingEmployee._id === employee._id ? (
-                      <input
-                        value={editingEmployee.employeeId}
-                        onChange={(e) => setEditingEmployee({...editingEmployee, employeeId: e.target.value})}
-                      />
-                    ) : (
-                      employee.employeeId
-                    )}
-                  </td>
-                  <td>
-                    {editingEmployee && editingEmployee._id === employee._id ? (
-                      <input
-                        value={editingEmployee.name}
-                        onChange={(e) => setEditingEmployee({...editingEmployee, name: e.target.value})}
-                      />
-                    ) : (
-                      employee.name
-                    )}
-                  </td>
-                  <td>
-                    {editingEmployee && editingEmployee._id === employee._id ? (
-                      <select
-                        value={editingEmployee.role}
-                        onChange={(e) => setEditingEmployee({...editingEmployee, role: e.target.value})}
-                      >
-                        <option value="worker">작업자</option>
-                        <option value="admin">관리자</option>
-                      </select>
-                    ) : (
-                      employee.role === 'admin' ? '관리자' : '작업자'
-                    )}
-                  </td>
-                  <td>
-                    {editingEmployee && editingEmployee._id === employee._id ? (
-                      <>
-                        <button onClick={handleUpdateEmployee}>저장</button>
-                        <button onClick={() => setEditingEmployee(null)}>취소</button>
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={() => handleEditEmployee(employee)}>수정</button>
-                        <button onClick={() => handleDeleteEmployee(employee._id, employee.name)}>삭제</button>
-                        <button onClick={() => showLoginRecords(employee.name)}>접속기록</button>
-                      </>
-                    )}
+                  <td>{employee.employeeId}</td>
+                  <td>{employee.name}</td>
+                  <td>{employee.role === 'admin' ? '관리자' : '작업자'}</td>
+                  <td className="button-cell">
+                    <button 
+                      onClick={() => handleDeleteEmployee(employee._id, employee.name)}
+                      className="employee-button delete"
+                    >
+                      삭제
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -207,6 +155,10 @@ const EmployeeManagement = () => {
         ) : (
           <p>등록된 작업자가 없습니다.</p>
         )}
+      </div>
+      <div className="access-log-placeholder">
+        <h3>접속 기록</h3>
+        <p>이 기능은 추후 구현될 예정입니다.</p>
       </div>
     </div>
   );

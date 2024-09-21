@@ -180,3 +180,10 @@
     font-size: 12px;
   }
 }
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+  color: #666;
+}

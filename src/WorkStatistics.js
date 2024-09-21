@@ -45,9 +45,11 @@ const WorkStatistics = () => {
   const [datesWithData, setDatesWithData] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [searchName, setSearchName] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const tableRef = useRef(null);
 
   const fetchWorkStatistics = useCallback(async () => {
+    setIsLoading(true);
     try {
       console.log("작업 통계 요청 시작");
       const response = await axios.get('/employee/work', {
@@ -63,6 +65,8 @@ const WorkStatistics = () => {
       setWorkStatistics(formattedData);
     } catch (error) {
       console.error("작업량 통계를 가져오는 중 오류 발생:", error.response ? error.response.data : error.message);
+    } finally {
+      setIsLoading(false);
     }
   }, [selectedMonth]);
 
@@ -183,7 +187,9 @@ const WorkStatistics = () => {
           />
         </div>
       </div>
-      {Object.keys(workStatistics).length === 0 ? (
+      {isLoading ? (
+        <div className="loading">데이터를 불러오는 중...</div>
+      ) : Object.keys(workStatistics).length === 0 ? (
         <p>데이터가 없습니다.</p>
       ) : (
         <div className="table-container">

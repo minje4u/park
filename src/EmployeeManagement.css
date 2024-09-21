@@ -18,24 +18,20 @@
 
 .employee-form {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 20px;
 }
 
 .employee-form input, .employee-form select {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 16px;
+    padding: 8px;
+    font-size: 14px;
 }
 
 .employee-button {
     background-color: #4CAF50;
     color: white;
     border: none;
-    padding: 8px 12px;
-    border-radius: 5px;
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.3s;
@@ -57,6 +53,7 @@
 .employee-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 260px;
     margin-top: 20px;
     font-size: 14px;
 }
@@ -82,11 +79,30 @@
     gap: 5px;
 }
 
-@media (max-width: 768px) {
-    .employee-header h2 {
-        font-size: 20px;
-    }
+.employee-list {
+    margin-bottom: 20px;
+}
 
+.table-container {
+    overflow-x: auto;
+}
+
+.access-log-placeholder {
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.access-log-placeholder h3 {
+    margin-top: 0;
+}
+
+@media (max-width: 768px) {
+    .employee-form {
+        flex-direction: column;
+    }
+    
     .employee-form input, .employee-form select, .employee-button {
         font-size: 14px;
     }
@@ -138,6 +154,7 @@
 
 .employee-management {
     padding: 20px;
+    max-width: 100%;
 }
 
 .employee-form {
@@ -178,4 +195,11 @@
 
 .employee-table button {
     margin-right: 5px;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+    color: #666;
 }
