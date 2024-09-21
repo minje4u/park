@@ -8,7 +8,7 @@ exports.handler = async (event, context) => {
     // MongoDB 연결 (연결 문자열은 환경 변수로 설정해야 합니다)
     if (mongoose.connection.readyState !== 1) {
       await mongoose.connect(process.env.MONGODB_URI, {
-        useNewUrlParser: true,
+        useNewUrlParser: true,                      
         useUnifiedTopology: true,
       });
     }

@@ -1,8 +1,12 @@
 /* src/WorkRegistration.css */
 .work-registration-container {
-    max-width: 100%;
-    padding: 15px;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
     box-sizing: border-box;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .work-header {
@@ -15,7 +19,11 @@
 .work-form {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 20px;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .form-group {
@@ -24,17 +32,20 @@
 }
 
 .form-group label {
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: bold;
+    color: #555;
 }
 
 .work-form input[type="date"],
 .work-form input[type="file"] {
     width: 100%;
+    max-width: 100%; /* 최대 너비를 100%로 제한 */
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
     font-size: 16px;
+    box-sizing: border-box; /* padding을 너비에 포함 */
 }
 
 .work-form button {
@@ -53,12 +64,17 @@
 }
 
 .file-preview {
-    margin-top: 20px;
+    margin-top: 30px;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .file-preview h3 {
     font-size: 18px;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    color: #333;
 }
 
 .table-container {
@@ -74,7 +90,7 @@
 .file-table th,
 .file-table td {
     border: 1px solid #ddd;
-    padding: 8px;
+    padding: 10px;
     text-align: left;
 }
 
@@ -84,24 +100,42 @@
 }
 
 .confirmation-message {
-    color: green;
+    color: #4CAF50;
     margin-top: 15px;
+    text-align: center;
+    font-weight: bold;
 }
 
 .error-message {
-    color: red;
+    color: #f44336;
     margin-top: 15px;
+    text-align: center;
+    font-weight: bold;
 }
 
 @media (max-width: 768px) {
+    .work-registration-container {
+        padding: 10px; /* 컨테이너의 패딩을 줄임 */
+    }
+
     .work-header {
         font-size: 20px;
+    }
+
+    .work-form {
+        padding: 10px; /* 폼의 패딩을 줄임 */
     }
 
     .work-form input[type="date"],
     .work-form input[type="file"],
     .work-form button {
         font-size: 14px;
+        padding: 8px; /* 입력 필드의 패딩을 줄임 */
+    }
+
+    .file-preview {
+        margin-top: 20px;
+        padding: 15px;
     }
 
     .file-preview h3 {
@@ -114,6 +148,11 @@
 
     .file-table th,
     .file-table td {
-        padding: 6px;
+        padding: 8px;
+    }
+
+    /* 파일 입력 필드에 대한 추가 모바일 스타일 */
+    .work-form input[type="file"] {
+        padding: 6px; /* 모바일에서 파일 입력 필드의 패딩을 더 줄임 */
     }
 }

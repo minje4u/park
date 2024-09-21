@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
-// import axios from 'axios'; // axios import 제거
 import * as XLSX from 'xlsx';
-import axios from 'axios'; // axios import 추가
+import axios from 'axios';
 import './WorkRegistration.css';
+
+const API_URL = process.env.NODE_ENV === 'production'
+  ? '/.netlify/functions/api'
+  : 'http://localhost:8888/.netlify/functions/api';
+
+// axios 기본 URL 설정
+axios.defaults.baseURL = API_URL;
+
 const WorkRegistration = ({ onConfirm }) => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
@@ -35,13 +42,14 @@ const WorkRegistration = ({ onConfirm }) => {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
-      // setFileContent(jsonData); // 파일 내용을 상태에 저장
 
       // 조 3만 추출하고 중량이 0 이상인 항목 필터링
       const filteredData = jsonData.filter(
         (row) => row['조'] === 3 && row['중량(Kg)'] > 0
       );
-      setFilteredContent(filteredData); // 필터링된 내용을 상태에 저장
+
+      console.log("필터링된 데이터:", filteredData); // 필터링된 데이터 로깅
+      setFilteredContent(filteredData);
     };
     reader.readAsArrayBuffer(file);
   };
@@ -53,31 +61,32 @@ const WorkRegistration = ({ onConfirm }) => {
       return;
     }
 
-    const workData = filteredContent.map(row => ({
-      조: parseInt(row['조']),
-      employeeId: row['작업자ID'],
-      employeeName: row['작업자명'], // '작업자명' 컬럼 사용
-      weight: parseFloat(row['중량(Kg)']),
-      workHours: parseFloat(row['총작업시간']) || 0, // '총작업시간' 컬럼 사용, NaN 방지
-      totalWeight: parseFloat(row['중량(Kg)']),
-      payment: Math.floor(parseFloat(row['중량(Kg)']) * 270)
-    }));
-
-    // 날짜를 'YYYY-MM-DD' 형식의 문자열로 변환
-    const formattedDate = new Date(selectedDate).toISOString().split('T')[0];
-
     try {
+      const workData = filteredContent.map(row => ({
+        date: new Date(selectedDate),
+        조: parseInt(row['조']),
+        employeeId: row['작업자ID'],
+        employeeName: row['작업자명'],
+        weight: parseFloat(row['중량(Kg)']),
+        workHours: parseFloat(row['총작업시간']) || 0,
+        totalWeight: parseFloat(row['중량(Kg)']),
+        payment: Math.floor(parseFloat(row['중량(Kg)']) * 270)
+      }));
+
+      console.log("전송할 데이터:", workData); // 전송 전 데이터 로깅
+
       // 서버에 데이터 전송
-      await axios.post('/work-registration', { date: formattedDate, workData });
+      const response = await axios.post('/employee/work', { workData });
       
-      console.log("전송할 데이터:", { date: formattedDate, workData });
-      onConfirm(formattedDate, workData);
-      setConfirmationMessage(`${formattedDate} 작업이 등록되었습니다.`);
+      console.log("서버 응답:", response.data);
+
+      onConfirm(selectedDate, workData);
+      setConfirmationMessage(`${selectedDate} 작업이 등록되었습니다.`);
       setErrorMessage("");
       setSelectedFile(null);
       setFilteredContent([]);
     } catch (error) {
-      console.error("작업 등록 중 오류 발생:", error);
+      console.error("작업 등록 중 오류 발생:", error.response ? error.response.data : error.message);
       setErrorMessage("작업 등록에 실패했습니다. 다시 시도해주세요.");
     }
   };

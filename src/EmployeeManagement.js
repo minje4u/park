@@ -2,6 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from 'axios';
 import "./EmployeeManagement.css";
 
+const API_URL = process.env.NODE_ENV === 'production'
+  ? '/.netlify/functions/api'
+  : 'http://localhost:8888/.netlify/functions/api';
+
+axios.defaults.baseURL = API_URL;
+
 const EmployeeManagement = () => {
   const [employees, setEmployees] = useState([]);
   const [newEmployeeName, setNewEmployeeName] = useState("");
@@ -26,6 +32,7 @@ const EmployeeManagement = () => {
   }, []);
 
   useEffect(() => {
+    console.log('Fetching employees...');
     fetchEmployees();
   }, [fetchEmployees]);
 
@@ -36,13 +43,14 @@ const EmployeeManagement = () => {
     }
 
     try {
-      await axios.post('/employees', {
+      const response = await axios.post('/employees', {
         name: newEmployeeName,
         employeeId: newEmployeeID,
         role: newEmployeeRole,
         password: "0000",
         isInitialPassword: true
       });
+      console.log("서버 응답:", response.data);
       alert("작업자가 추가되었습니다. 초기 비밀번호는 0000입니다.");
       fetchEmployees();
       setNewEmployeeName("");
@@ -50,7 +58,16 @@ const EmployeeManagement = () => {
       setNewEmployeeRole("worker");
     } catch (error) {
       console.error('작업자 추가 중 오류 발생:', error);
-      alert('작업자 추가에 실패했습니다.');
+      if (error.response) {
+        console.error('서버 응답:', error.response.data);
+        alert(`작업자 추가에 실패했습니다: ${error.response.data.error || '알 수 없는 오류'}`);
+      } else if (error.request) {
+        console.error('서버 응답 없음');
+        alert('서버에서 응답이 없습니다. 네트워크 연결을 확인해주세요.');
+      } else {
+        console.error('요청 설정 중 오류:', error.message);
+        alert(`요청 중 오류가 발생했습니다: ${error.message}`);
+      }
     }
   };
 
@@ -91,6 +108,8 @@ const EmployeeManagement = () => {
       alert('작업자 수정에 실패했습니다.');
     }
   };
+
+  console.log('Current employees state:', employees);
 
   return (
     <div className="employee-management">

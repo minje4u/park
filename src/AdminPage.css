@@ -1,9 +1,9 @@
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 .admin-container {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 20px;
+  padding: 10px;
   font-family: 'Arial', sans-serif;
 }
 
@@ -15,255 +15,65 @@
 }
 
 .admin-header h1 {
-  font-size: 24px;
+  font-size: 20px;
   margin: 0;
 }
 
 .menu-icon {
-  display: none;
   cursor: pointer;
+  font-size: 32px;
+  display: none;
+}
+
+.menu-icon .material-icons {
+  font-size: inherit;
 }
 
 .admin-tabs {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   margin-bottom: 20px;
-  padding: 10px;
   background-color: #f9f9f9;
-  border-radius: 30px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border-radius: 10px;
+  padding: 5px;
 }
 
 .admin-tabs button {
-  font-size: 0.9rem;
-  font-weight: bold;
-  padding: 8px 16px;
-  margin: 0 5px;
+  font-size: 14px;
+  padding: 8px 12px;
+  margin: 5px;
   border: none;
-  border-radius: 20px;
-  background-color: #f0f0f0;
+  border-radius: 5px;
+  background-color: #e0e0e0;
   color: #333;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-.admin-tabs button:hover {
-  background-color: #e0e0e0;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
+.admin-tabs button:hover,
 .admin-tabs button.active {
   background-color: #4CAF50;
   color: white;
 }
 
-.admin-tabs button.active:hover {
-  background-color: #45a049;
-}
-
 .admin-content {
   background-color: white;
   border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 15px;
 }
 
-.table-container {
-  overflow-x: auto;
-  max-width: 100%;
-  position: relative;
-}
-
-.admin-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 12px;
-}
-
-.admin-table th,
-.admin-table td {
-  border: 1px solid #ddd;
-  padding: 2px;
-  text-align: center;
-}
-
-.admin-table th {
-  background-color: #f2f2f2;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.fixed-column {
-  position: sticky;
-  left: 0;
-  background-color: #fff;
-  z-index: 5;
-}
-
-.fixed-column:nth-child(1) { /* ID 칼럼 */
-  min-width: 20px;
-  max-width: 20px;
-}
-
-.fixed-column:nth-child(2) { /* 이름 칼럼 */
-  min-width: 60px;
-  max-width: 60px;
-}
-
-.admin-table th.fixed-column {
-  z-index: 15;
-}
-
-.date-column {
-  min-width: 50px;
-}
-
-.delete-button {
-  background-color: transparent;
-  border: none;
-  color: red;
-  cursor: pointer;
-  font-weight: bold;
-  padding: 0;
-  margin-left: 2px;
-  font-size: 10px;
-}
-
-.data-cell {
-  padding: 2px;
-}
-
-.weight {
-  font-weight: bold;
-  font-size: 11px;
-}
-
-.work-hours {
-  font-size: 9px;
-  color: #666;
-}
-
-.sum-cell, .pay-cell {
-  font-weight: bold;
-  font-size: 11px;
-}
-
-@media (max-width: 768px) {
-  .menu-icon {
-    display: block;
-  }
-
-  .admin-tabs {
-    display: none;
-    flex-direction: column;
-    position: absolute;
-    top: 60px;
-    right: 20px;
-    background-color: white;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    z-index: 100;
-  }
-
-  .admin-tabs.open {
-    display: flex;
-  }
-
-  .admin-tabs button {
-    width: 100%;
-    text-align: left;
-    padding: 10px;
-    border: none;
-    background: none;
-    cursor: pointer;
-  }
-
-  .admin-tabs button:hover {
-    background-color: #f0f0f0;
-  }
-
-  .admin-tabs button.active {
-    background-color: #e0e0e0;
-  }
-
-  .admin-table {
-    font-size: 10px;
-  }
-
-  .admin-table th,
-  .admin-table td {
-    padding: 1px;
-  }
-
-  .fixed-column:nth-child(1) { /* ID 칼럼 (모바일) */
-    min-width: 30px;
-    max-width: 30px;
-  }
-
-  .fixed-column:nth-child(2) { /* 이름 칼럼 (모바일) */
-    min-width: 50px;
-    max-width: 50px;
-  }
-
-  .date-column {
-    min-width: 40px;
-  }
-
-  .weight {
-    font-size: 10px;
-  }
-
-  .work-hours {
-    font-size: 8px;
-  }
-
-  .sum-cell, .pay-cell {
-    font-size: 10px;
-  }
-}
-
-.id-column, .name-column {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.admin-button {
-  background-color: #5c6bc0;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s ease;
-}
-
-.admin-button:hover {
-  background-color: #3f51b5;
-}
-
-.admin-section-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-/* 공지사항 스타일 */
 .notice-section {
-  max-width: 800px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 20px;
+  padding: 10px;
 }
 
 .section-title {
   text-align: center;
-  margin-bottom: 20px;
-  font-size: 24px;
+  margin-bottom: 15px;
+  font-size: 20px;
   color: #333;
 }
 
@@ -271,19 +81,19 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .notice-input,
 .notice-textarea {
-  padding: 10px;
+  padding: 8px;
   border: 1px solid #ddd;
   border-radius: 5px;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .notice-textarea {
-  min-height: 100px;
+  min-height: 80px;
   resize: vertical;
 }
 
@@ -294,7 +104,7 @@
   padding: 10px;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   transition: background-color 0.3s;
 }
 
@@ -302,71 +112,44 @@
   background-color: #45a049;
 }
 
-.notice-button.edit {
-  background-color: #2196F3;
-}
-
-.notice-button.edit:hover {
-  background-color: #1E88E5;
-}
-
-.notice-button.delete {
-  background-color: #f44336;
-}
-
-.notice-button.delete:hover {
-  background-color: #d32f2f;
-}
-
 .notice-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
 }
 
 .notice-item {
   background-color: #ffffff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 20px;
+  padding: 15px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
 }
 
 .notice-date {
-  font-size: 12px;
+  font-size: 11px;
   color: #666;
-  margin-bottom: 10px;
-  padding: 3px 8px;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  display: inline-block;
-  background-color: #f8f8f8;
+  margin-bottom: 5px;
+  display: block;
 }
 
 .notice-title {
-  font-size: 18px;
+  font-size: 16px;
   color: #333;
   margin: 0 0 10px 0;
-  width: 100%;
 }
 
 .notice-content {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
-  line-height: 1.5;
-  margin-bottom: 15px;
-  width: 100%;
+  line-height: 1.4;
+  margin-bottom: 10px;
 }
 
 .notice-actions {
   display: flex;
   justify-content: flex-start;
   gap: 10px;
-  width: 100%;
 }
 
 .notice-icon-button {
@@ -374,9 +157,6 @@
   border: none;
   cursor: pointer;
   padding: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: #888;
   transition: color 0.3s;
 }
@@ -386,203 +166,62 @@
 }
 
 .material-icons {
-  font-size: 20px;
-}
-
-.no-notice {
-  text-align: center;
-  color: #888;
+  font-size: 18px;
 }
 
 @media (max-width: 768px) {
-  .notice-section {
+  .admin-header h1 {
+    font-size: 18px;
+  }
+
+  .menu-icon {
+    display: block;
+  }
+
+  .admin-header {
+    padding: 10px 0;
+  }
+
+  .admin-header h1 {
+    font-size: 16px;
+  }
+
+  .admin-tabs {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 70px;
+    left: 0;
+    right: 0;
+    background-color: #f9f9f9;
+    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+
+  .admin-tabs.open {
+    display: flex;
+  }
+
+  .admin-tabs button {
+    width: 100%;
+    margin: 1px 0;
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .admin-content {
     padding: 10px;
   }
 
   .section-title {
-    font-size: 20px;
-  }
-
-  .notice-input,
-  .notice-textarea,
-  .notice-button {
-    font-size: 14px;
+    font-size: 18px;
   }
 
   .notice-title {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .notice-content {
-    font-size: 13px;
-  }
-
-  .notice-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
-
-  .notice-actions {
-    margin-top: 10px;
-  }
-
-  .notice-button {
-    padding: 8px;
     font-size: 12px;
   }
-
-  .notice-item {
-    padding: 15px;
-  }
-
-  .material-icons {
-    font-size: 18px;
-  }
-}
-
-.reset-button {
-  margin-left: 20px;
-  background-color: red;
-  color: white;
-}
-
-@media (max-width: 480px) {
-  .admin-container {
-    padding: 10px;
-  }
-
-  .admin-header h1 {
-    font-size: 24px;
-  }
-
-  .admin-tabs button {
-    padding: 8px 12px;
-    font-size: 14px;
-  }
-
-  .admin-content {
-    padding: 10px;
-  }
-
-  .admin-section-title {
-    font-size: 20px;
-  }
-
-  .notice-form input,
-  .notice-form textarea,
-  .notice-form button {
-    font-size: 14px;
-  }
-
-  .notice-item h4 {
-    font-size: 18px;
-  }
-
-  .notice-item p {
-    font-size: 12px;
-  }
-
-  .notice-item small {
-    font-size: 10px;
-  }
-
-  .notice-item button,
-  .notice-edit-button {
-    font-size: 12px;
-    padding: 6px 10px;
-  }
-}
-
-.notice-edit-button {
-  background-color: #ff9800;
-  color: white;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-right: 10px;
-  transition: background-color 0.3s ease;
-}
-
-.notice-edit-button:hover {
-  background-color: #fb8c00;
-}
-
-@media (max-width: 480px) {
-  .admin-container {
-    padding: 10px;
-  }
-
-  .admin-header h1 {
-    font-size: 24px;
-  }
-
-  .admin-tabs button {
-    padding: 8px 12px;
-    font-size: 14px;
-  }
-
-  .admin-content {
-    padding: 10px;
-  }
-
-  .admin-section-title {
-    font-size: 20px;
-  }
-
-  .notice-form input,
-  .notice-form textarea,
-  .notice-form button {
-    font-size: 14px;
-  }
-
-  .notice-item h4 {
-    font-size: 18px;
-  }
-
-  .notice-item p {
-    font-size: 12px;
-  }
-
-  .notice-item small {
-    font-size: 10px;
-  }
-
-  .notice-item button,
-  .notice-edit-button {
-    font-size: 12px;
-    padding: 6px 10px;
-  }
-}
-
-.search-container {
-  margin-bottom: 20px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-}
-
-@media (max-width: 768px) {
-  .search-input {
-    font-size: 14px;
-    padding: 8px;
-  }
-}
-
-.delete-day {
-  cursor: pointer;
-  margin-left: 5px;
-  font-size: 0.6em;
-  color: red;
-}
-
-.delete-day:hover {
-  color: darkred;
 }

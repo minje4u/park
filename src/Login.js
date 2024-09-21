@@ -94,7 +94,7 @@ const Login = ({ onLogin }) => {
               placeholder="비밀번호"
               required
             />
-            {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
+            {errorMessage && <p className="error-message">{errorMessage}</p>}
             <button type="submit">로그인</button>
           </form>
         )}

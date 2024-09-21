@@ -3,65 +3,87 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    background-color: #2e2e2e;
-    color: #fff;
-    font-family: 'Helvetica Neue', sans-serif;
-  }
-  
-  .login-box {
-    background-color: #1a1a1a;
-    border-radius: 10px;
-    padding: 40px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+    min-height: 100vh;
+    background-color: #f5f7fa;
+    font-family: 'Arial', sans-serif;
+    padding: 20px;
+}
+
+.login-box {
+    background-color: #ffffff;
+    border-radius: 20px;
+    padding: 30px 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     text-align: center;
-    width: 400px;
-  }
-  
-  .login-box h2 {
-    font-size: 26px;
-    font-weight: 600;
-    color: #f39c12;
-    margin-bottom: 30px;
-  }
-  
-  .login-box input,
-  .login-box button {
-    background-color: #333;
-    color: #fff;
-    border: 1px solid #555;
-    border-radius: 5px;
+    width: 100%;
+    max-width: 350px;
+}
+
+.login-box h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 25px;
+}
+
+.login-box input,
+.login-box button {
+    background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
     padding: 12px;
-    font-size: 15px;
-    width: 90%; /* 버튼과 입력 필드 크기 동일 */
-    margin-bottom: 20px;
-  }
-  
-  .login-box input:focus {
+    font-size: 14px;
+    width: 100%;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.login-box input:focus {
     outline: none;
-    border-color: #f39c12;
-  }
-  
-  .login-box button {
-    background-color: #e74c3c;
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.login-box button {
+    background-color: #4a90e2;
+    color: #ffffff;
     border: none;
     cursor: pointer;
+    font-weight: 600;
     transition: background-color 0.3s ease;
-  }
-  
-  .login-box button:hover {
-    background-color: #c0392b;
-  }
-  
-  .error-message {
+    margin-top: 10px;
+}
+
+.login-box button:hover {
+    background-color: #3a7bc8;
+}
+
+.error-message {
     color: #e74c3c;
-    margin-top: 15px;
-    font-size: 14px;
-  }
-  
-  .confirmation-message {
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.confirmation-message {
     color: #27ae60;
-    margin-top: 15px;
-    font-size: 14px;
-  }
-  
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+@media (max-width: 480px) {
+    .login-box {
+        padding: 25px 20px;
+    }
+
+    .login-box h2 {
+        font-size: 22px;
+    }
+
+    .login-box input,
+    .login-box button {
+        font-size: 13px;
+        padding: 10px;
+    }
+}

@@ -19,7 +19,6 @@ app.get('/getWorkerData', (req, res) => getWorkerData(req, res));
 
 module.exports.handler = serverless(app);
 
-
 // CORS 미들웨어 설정
 app.use(cors({
   origin: function (origin, callback) {
@@ -34,6 +33,7 @@ app.use(cors({
       callback(new Error('CORS not allowed'));
     }
   },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 }));
 
@@ -84,26 +84,20 @@ const createInitialAdminAccount = async () => {
     console.error('초기 관리자 계정 생성 중 오류 발생:', error);
   }
 };
+
 // 로그인 라우트
 router.post('/login', async (req, res) => {
-  // console.log('Login request received:', req.body);
   try {
     await connectDB();
     const { name, password } = req.body;
-    console.log('Searching for employee:', name);
     const employee = await Employee.findOne({ name });
-    console.log('Employee found:', employee);
     if (!employee) {
-      console.log('Login failed: Employee not found');
       return res.status(401).json({ error: '이름 또는 비밀번호가 올바르지 않습니다.' });
     }
     const isMatch = await employee.comparePassword(password);
-    console.log('Password match:', isMatch);
     if (!isMatch) {
-      console.log('Login failed: Incorrect password');
       return res.status(401).json({ error: '이름 또는 비밀번호가 올바르지 않습니다.' });
     }
-    console.log('Login successful');
     res.json({ 
       name: employee.name, 
       role: employee.role,
@@ -115,157 +109,86 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// 다른 라우트들도 여기에 추가...
-
-router.get('/employee/work', async (req, res) => {
+// 작업 데이터 저장 라우트
+router.post('/employee/work', async (req, res) => {
   try {
     await connectDB();
-    const { year, month } = req.query;
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-    
-    const works = await Work.find({
-      date: { $gte: startDate, $lte: endDate }
+    const workData = req.body.workData;
+    console.log("받은 작업 데이터:", workData);
+
+    // 데이터의 날짜 확인 (첫 번째 항목의 날짜 사용)
+    const dataDate = new Date(workData[0].date);
+    const startOfDay = new Date(dataDate.getFullYear(), dataDate.getMonth(), dataDate.getDate());
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    // 같은 날짜의 기존 데이터 삭제
+    await Work.deleteMany({
+      date: { $gte: startOfDay, $lt: endOfDay }
     });
-    
-    console.log('Fetched works:', works);
-    res.json(works);
+
+    // 새 데이터 저장
+    const savedWork = await Work.insertMany(workData);
+    console.log("저장된 작업 데이터:", savedWork);
+    res.status(201).json(savedWork);
   } catch (error) {
-    console.error('Error fetching works:', error);
-    res.status(500).json({ error: '작업 정보를 가져오는 데 실패했습니다.' });
+    console.error('Error saving work data:', error);
+    res.status(500).json({ error: '작업 데이터 저장에 실패했습니다.' });
   }
 });
 
 // 공지사항 관련 엔드포인트
 router.get('/notices', async (req, res) => {
   try {
-    await connectDB();
     const notices = await Notice.find().sort({ dateTime: -1 });
     res.json(notices);
   } catch (error) {
-    console.error('Error fetching notices:', error);
-    res.status(500).json({ error: '공지사항을 가져오는 데 실패했습니다.' });
+    res.status(500).json({ error: '공지사항 조회 중 오류가 발생했습니다.' });
   }
 });
 
+// 공지사항 등록
 router.post('/notices', async (req, res) => {
   try {
-    await connectDB();
     const { title, content } = req.body;
     const newNotice = new Notice({ title, content });
-    await newNotice.save();
-    res.status(201).json(newNotice);
+    const savedNotice = await newNotice.save();
+    res.status(201).json(savedNotice);
   } catch (error) {
-    console.error('Error creating notice:', error);
-    res.status(500).json({ error: '공지사항 생성에 실패했습니다.' });
+    res.status(500).json({ error: '공지사항 등록 중 오류가 발생했습니다.' });
   }
 });
 
+// 공지사항 수정
 router.put('/notices/:id', async (req, res) => {
   try {
-    await connectDB();
     const { id } = req.params;
     const { title, content } = req.body;
     const updatedNotice = await Notice.findByIdAndUpdate(id, { title, content }, { new: true });
+    if (!updatedNotice) {
+      return res.status(404).json({ error: '공지사항을 찾을 수 없습니다.' });
+    }
     res.json(updatedNotice);
   } catch (error) {
-    console.error('Error updating notice:', error);
-    res.status(500).json({ error: '공지사항 수정에 실패했습니다.' });
+    res.status(500).json({ error: '공지사항 수정 중 오류가 발생했습니다.' });
   }
 });
 
+// 공지사항 삭제
 router.delete('/notices/:id', async (req, res) => {
   try {
-    await connectDB();
     const { id } = req.params;
-    await Notice.findByIdAndDelete(id);
+    const deletedNotice = await Notice.findByIdAndDelete(id);
+    if (!deletedNotice) {
+      return res.status(404).json({ error: '공지사항을 찾을 수 없습니다.' });
+    }
     res.json({ message: '공지사항이 삭제되었습니다.' });
   } catch (error) {
-    console.error('Error deleting notice:', error);
-    res.status(500).json({ error: '공지사항 삭제에 실패했습니다.' });
+    res.status(500).json({ error: '공지사항 삭제 중 오류가 발생했습니다.' });
   }
 });
 
-router.get('/employees', async (req, res) => {
-  try {
-    await connectDB();
-    const employees = await Employee.find();
-    res.json(employees);
-  } catch (error) {
-    console.error('Error fetching employees:', error);
-    res.status(500).json({ error: '직원 정보를 가져오는 데 실패했습니다.' });
-  }
-});
-
-// ... (다른 필요한 엔드포인트 추가)
-
-router.post('/employees', async (req, res) => {
-  try {
-    await connectDB();
-    const { name, employeeId, role, password } = req.body;
-    const newEmployee = new Employee({ name, employeeId, role, password });
-    await newEmployee.save();
-    res.status(201).json({ message: "직원이 성공적으로 추가되었습니다.", employee: newEmployee });
-  } catch (error) {
-    console.error('Error adding employee:', error);
-    res.status(500).json({ error: '직원 추가에 실패했습니다.' });
-  }
-});
-
-router.post('/employee/work', async (req, res) => {
-  try {
-    await connectDB();
-    const { employeeId, date, workType, workAmount } = req.body;
-    
-    const newWork = new Work({
-      employeeId,
-      date,
-      workType,
-      workAmount
-    });
-
-    await newWork.save();
-    console.log('New work saved:', newWork);
-    res.status(201).json({ message: "작업이 성공적으로 저장되었습니다.", work: newWork });
-  } catch (error) {
-    console.error('Error saving work:', error);
-    res.status(500).json({ error: '작업 저장에 실패했습니다.' });
-  }
-});
-
-router.post('/employee/work/bulk', async (req, res) => {
-  try {
-    const { date, workData } = req.body;
-    const workDate = new Date(date + 'T00:00:00.000Z');
-    
-    const bulkOps = workData.map(work => ({
-      updateOne: {
-        filter: { 
-          date: workDate,
-          employeeId: work.employeeId
-        },
-        update: {
-          $set: {
-            조: work.조,
-            employeeName: work.employeeName,
-            weight: work.weight,
-            workHours: work.workHours,
-            totalWeight: work.totalWeight,
-            payment: work.payment
-          }
-        },
-        upsert: true
-      }
-    }));
-
-    await Work.bulkWrite(bulkOps);
-    res.status(201).json({ message: "작업이 성공적으로 일괄 저장되었습니다." });
-  } catch (error) {
-    console.error('Error saving bulk work data:', error);
-    res.status(500).json({ error: '작업 일괄 저장에 실패했습니다.' });
-  }
-});
-
+// 비밀번호 변경 라우트
 router.post('/change-password', async (req, res) => {
   try {
     const { name, newPassword } = req.body;
@@ -301,24 +224,27 @@ router.delete('/employees/:id', async (req, res) => {
 
 // 특정 날짜의 작업 데이터 삭제
 router.delete('/employee/work/:date', async (req, res) => {
-  console.log('삭제 요청 받음:', req.params);
   try {
+    await connectDB();
     const { date } = req.params;
+    console.log('Received date for deletion:', date);
+
+    // 날짜 범위 설정 (UTC 기준)
     const startOfDay = new Date(date);
     startOfDay.setUTCHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
     endOfDay.setUTCHours(23, 59, 59, 999);
 
-    console.log('삭제 범위:', startOfDay, '-', endOfDay);
+    console.log('Deleting data between:', startOfDay, 'and', endOfDay);
 
     const result = await Work.deleteMany({
       date: { $gte: startOfDay, $lte: endOfDay }
     });
 
-    console.log('삭제 결과:', result);
+    console.log('Deletion result:', result);
 
     if (result.deletedCount > 0) {
-      res.json({ message: `${date} 데이터가 성공적으로 삭제되었습니다. (${result.deletedCount}개 항목 삭제)` });
+      res.json({ message: `${date} 데이터가 삭제되었습니다. 삭제된 항목: ${result.deletedCount}` });
     } else {
       res.status(404).json({ error: '해당 날짜의 데이터를 찾을 수 없습니다.' });
     }
@@ -361,5 +287,55 @@ connectDB().then(() => {
 
 const handler = serverless(app);
 module.exports = { handler };
-module.exports = { handler };
+
+// 작업 데이터 불러오기 라우트 추가
+router.get('/employee/work', async (req, res) => {
+  try {
+    await connectDB();
+    const { year, month } = req.query;
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+    const workData = await Work.find({
+      date: { $gte: startDate, $lte: endDate }
+    });
+
+    res.json(workData);
+  } catch (error) {
+    console.error('Error fetching work data:', error);
+    res.status(500).json({ error: '작업 데이터를 불러오는 데 실패했습니다.' });
+  }
+});
+
+// 작업자 목록 불러오기 라우트 추가
+router.get('/employees', async (req, res) => {
+  try {
+    await connectDB();
+    const employees = await Employee.find({});
+    res.json(employees);
+  } catch (error) {
+    console.error('Error fetching employees:', error);
+    res.status(500).json({ error: '직원 정보를 가져오는 데 실패했습니다.' });
+  }
+});
+
+// 작업자 추가 라우트 추가
+router.post('/employees', async (req, res) => {
+  try {
+    await connectDB();
+    const { name, employeeId, role, password, isInitialPassword } = req.body;
+    const newEmployee = new Employee({
+      name,
+      employeeId,
+      role,
+      password,
+      isInitialPassword
+    });
+    const savedEmployee = await newEmployee.save();
+    res.status(201).json(savedEmployee);
+  } catch (error) {
+    console.error('Error adding employee:', error);
+    res.status(500).json({ error: '작업자 추가에 실패했습니다.' });
+  }
+});
 

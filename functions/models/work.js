@@ -1,14 +1,14 @@
 const mongoose = require("mongoose");
 
 const WorkSchema = new mongoose.Schema({
-  date: Date,
-  조: Number,
-  employeeId: String,
-  employeeName: String, // 작업자명 필드 추가
-  weight: Number,
-  workHours: Number, // 작업시간 필드 추가
-  totalWeight: Number,
-  payment: Number
+  date: { type: Date, required: true },
+  조: { type: Number, required: true },
+  employeeId: { type: String, required: true },
+  employeeName: { type: String, required: true },
+  weight: { type: Number, required: true },
+  workHours: { type: Number, required: true },
+  totalWeight: { type: Number, required: true },
+  payment: { type: Number, required: true }
 });
 
 module.exports = mongoose.model('Work', WorkSchema);
