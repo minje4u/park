@@ -292,18 +292,20 @@ module.exports = { handler };
 router.get('/employee/work', async (req, res) => {
   try {
     await connectDB();
-    const { year, month } = req.query;
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    const { employeeName } = req.query;
+    console.log('Requested employee name:', employeeName);
 
-    const workData = await Work.find({
-      date: { $gte: startDate, $lte: endDate }
-    });
+    if (!employeeName) {
+      return res.status(400).json({ error: '작업자 이름이 제공되지 않았습니다.' });
+    }
+
+    const workData = await Work.find({ employeeName: employeeName }).sort({ date: -1 });
+    console.log('Found work data:', workData);
 
     res.json(workData);
   } catch (error) {
-    console.error('Error fetching work data:', error);
-    res.status(500).json({ error: '작업 데이터를 불러오는 데 실패했습니다.' });
+    console.error('Error fetching employee work data:', error);
+    res.status(500).json({ error: '작업자 데이터를 가져오는 데 실패했습니다.' });
   }
 });
 

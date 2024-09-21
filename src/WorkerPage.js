@@ -3,6 +3,12 @@ import { useParams } from "react-router-dom";
 import axios from 'axios';
 import "./WorkerPage.css";
 
+const API_URL = process.env.NODE_ENV === 'production'
+  ? '/.netlify/functions/api'
+  : 'http://localhost:8888/.netlify/functions/api';
+
+axios.defaults.baseURL = API_URL;
+
 const WorkerPage = () => {
   const { username } = useParams();
   const [workerData, setWorkerData] = useState([]);
@@ -11,14 +17,14 @@ const WorkerPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [notices, setNotices] = useState([]);
   const [selectedNotice, setSelectedNotice] = useState(null);
-  const [fortune, setFortune] = useState('');
-  const [fortuneClicked, setFortuneClicked] = useState(false);
+  const [showLastMonthModal, setShowLastMonthModal] = useState(false);
+  const [lastMonthData, setLastMonthData] = useState(null);
 
   const fetchWorkerData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`/getWorkerData?username=${encodeURIComponent(username)}`);
-      console.log('서버 응답:', response.data); // 디버깅용 로그
+      const response = await axios.get(`/employee/work?employeeName=${encodeURIComponent(username)}`);
+      console.log('서버 응답:', response.data);
       const data = response.data;
       
       if (Array.isArray(data) && data.length > 0) {
@@ -32,6 +38,13 @@ const WorkerPage = () => {
       }
     } catch (error) {
       console.error('작업자 데이터 조회 중 오류 발생:', error);
+      if (error.response) {
+        console.error('서버 응답:', error.response.data);
+      } else if (error.request) {
+        console.error('서버 응답 없음');
+      } else {
+        console.error('요청 설정 중 오류:', error.message);
+      }
       setWorkerData([]);
       setTodayData(null);
     } finally {
@@ -39,24 +52,21 @@ const WorkerPage = () => {
     }
   }, [username]);
 
-  const checkFortuneStatus = useCallback(async () => {
+  const fetchLastMonthData = useCallback(async () => {
     try {
-      const response = await axios.get(`/fortune-status/${username}`);
-      setFortuneClicked(response.data.clicked);
-      if (response.data.fortune) {
-        setFortune(response.data.fortune);
-      }
+      const response = await axios.get(`/employee/lastmonth?employeeName=${encodeURIComponent(username)}`);
+      setLastMonthData(response.data);
     } catch (error) {
-      console.error('운세 상태 확인 중 오류 발생:', error);
+      console.error('지난달 데이터 조회 중 오류 발생:', error);
+      setLastMonthData(null);
     }
   }, [username]);
 
   useEffect(() => {
-    checkFortuneStatus();
     fetchWorkerData();
     fetchNotices();
     setCurrentMonth(getCurrentMonth());
-  }, [checkFortuneStatus, fetchWorkerData]);
+  }, [fetchWorkerData]);
 
   const getCurrentMonth = () => {
     const now = new Date();
@@ -65,22 +75,10 @@ const WorkerPage = () => {
 
   const fetchNotices = async () => {
     try {
-      const response = await axios.get(`/notices`);
+      const response = await axios.get('/notices');
       setNotices(response.data);
     } catch (error) {
       console.error('공지사항 조회 중 오류 발생:', error);
-    }
-  };
-
-  const getFortuneOfTheDay = async () => {
-    if (!fortuneClicked) {
-      try {
-        const response = await axios.post(`/get-fortune/${username}`);
-        setFortune(response.data.fortune);
-        setFortuneClicked(true);
-      } catch (error) {
-        console.error('운세 가져오기 중 오류 발생:', error);
-      }
     }
   };
 
@@ -109,38 +107,62 @@ const WorkerPage = () => {
     return new Date(date).toLocaleDateString('ko-KR', options);
   };
 
+  const openLastMonthModal = () => {
+    fetchLastMonthData();
+    setShowLastMonthModal(true);
+  };
+
+  const closeLastMonthModal = () => {
+    setShowLastMonthModal(false);
+  };
+
+  const renderLastMonthData = () => {
+    const now = new Date();
+    if (now.getDate() >= 11 && now.getHours() >= 0) {
+      return <p>데이터가 없습니다.</p>;
+    }
+    if (lastMonthData) {
+      return (
+        <>
+          <p>총 작업량: {lastMonthData.totalWeight.toFixed(2)} Kg</p>
+          <p>총 도급비: {formatCurrency(lastMonthData.totalPayment)}</p>
+        </>
+      );
+    }
+    return <p>데이터를 불러오는 중...</p>;
+  };
+
   return (
     <div className="worker-container">
       <div className="worker-header">
-        <h1>{username}님의 작업 현황</h1>
-        <h2 className="current-month">{currentMonth}</h2>
+        <div className="worker-header-content">
+          <h1>{username}<span className="header-small">님의</span></h1>
+          <h2>{currentMonth} 작업현황</h2>
+        </div>
       </div>
       
       <div className="notice-board">
-        <h3>공지사항</h3>
-        <div className="notice-buttons">
-          {notices.map((notice) => (
-            <button
-              key={notice._id}
-              className="notice-button"
-              onClick={() => openNoticeModal(notice)}
-            >
-              <span className="notice-icon">📢</span>
-              {notice.title}
-            </button>
-          ))}
+        <div className="notice-header">
+          <h3>공지사항</h3>
         </div>
-      </div>
-
-      <div className="fortune-section">
-        <button 
-          onClick={getFortuneOfTheDay} 
-          disabled={fortuneClicked}
-          className={`fortune-button ${fortuneClicked ? 'clicked' : ''}`}
-        >
-          {fortuneClicked ? '오늘의 운세' : '오늘의 운세 보기'}
-        </button>
-        {fortune && <p className="fortune-text">{fortune}</p>}
+        <div className="notice-content">
+          {notices.length > 0 ? (
+            <div className="notice-buttons">
+              {notices.map((notice) => (
+                <button
+                  key={notice._id}
+                  className="notice-button"
+                  onClick={() => openNoticeModal(notice)}
+                >
+                  <span className="notice-icon">📢</span>
+                  {notice.title}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="no-notice-message">현재 등록된 공지사항이 없습니다.</p>
+          )}
+        </div>
       </div>
 
       <div className="today-data">
@@ -168,54 +190,77 @@ const WorkerPage = () => {
         )}
       </div>
 
-      <div className="worker-stats">
-        <div className="stat-card">
-          <h3>총 작업량</h3>
-          <p>{sumKg.toFixed(2)} Kg</p>
-        </div>
-        <div className="stat-card">
-          <h3>총 도급비</h3>
-          <p>{formatCurrency(totalPay)}</p>
-        </div>
-      </div>
-
       <div className="table-container">
         <div className="table-header">
-          <h2>작업 상세 내역</h2>
+          <h2>이번달 작업내역</h2>
           <button className="refresh-button" onClick={handleRefresh} disabled={isLoading}>
-            <span className="material-icons">refresh</span>
             {isLoading ? '새로고침 중...' : '새로고침'}
           </button>
         </div>
 
-        <table className="worker-table">
-          <thead>
-            <tr>
-              <th>날짜</th>
-              <th>중량(Kg)</th>
-              <th>작업시간</th>
-              <th>도급비용</th>
-            </tr>
-          </thead>
-          <tbody>
-            {workerData.map((item, index) => (
-              <tr key={item.date} className={index % 2 === 0 ? 'even-row' : 'odd-row'}>
-                <td>{new Date(item.date).toLocaleDateString()}</td>
-                <td>{item.weight.toFixed(2)}</td>
-                <td>{item.workHours}</td>
-                <td>{formatCurrency(item.payment)}</td>
+        <div className="table-responsive">
+          <table className="worker-table">
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>중량(Kg)</th>
+                <th>작업시간</th>
+                <th>도급비용</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {workerData.map((item, index) => (
+                <tr key={item.date} className={index % 2 === 0 ? 'even-row' : 'odd-row'}>
+                  <td>{new Date(item.date).toLocaleDateString()}</td>
+                  <td>{item.weight.toFixed(2)}</td>
+                  <td>{item.workHours}</td>
+                  <td>{formatCurrency(item.payment)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <div className="worker-stats">
+        <div className="stat-card">
+          <span className="stat-label">총 작업량</span>
+          <span className="stat-value">{sumKg.toFixed(2)} Kg</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">총 도급비</span>
+          <span className="stat-value">{formatCurrency(totalPay)}</span>
+        </div>
+      </div>
+
+      <div className="info-box">
+        <h3><span className="info-icon">ℹ️</span> 안내사항</h3>
+        <ol>
+          <li>공지사항 확인을 생활화 합시다.</li>
+          <li>작업내역은 매달 1일~말일까지 보여지며, 매월 10일경에 초기화 됩니다.</li>
+        </ol>
+      </div>
+
+      <button className="last-month-button" onClick={openLastMonthModal}>
+        지난달 도급비용 확인
+      </button>
+
+      {showLastMonthModal && (
+        <div className="modal-overlay" onClick={closeLastMonthModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>지난달 도급비용</h3>
+            {renderLastMonthData()}
+            <button onClick={closeLastMonthModal}>닫기</button>
+          </div>
+        </div>
+      )}
 
       {selectedNotice && (
         <div className="modal-overlay" onClick={closeNoticeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>{selectedNotice.title}</h3>
             <p>{selectedNotice.content}</p>
-            <small>{new Date(selectedNotice.createdAt).toLocaleString()}</small>
+            <small>{new Date(selectedNotice.dateTime).toLocaleString()}</small>
             <button onClick={closeNoticeModal}>닫기</button>
           </div>
         </div>
