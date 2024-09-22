@@ -63,7 +63,8 @@ const WorkStatistics = () => {
       const response = await axios.get('/employee/work', {
         params: {
           year: selectedMonth.getFullYear(),
-          month: selectedMonth.getMonth() + 1
+          month: selectedMonth.getMonth() + 1,
+          groupNumber: '' // 빈 문자열로 설정하여 모든 작업자의 데이터를 가져옵니다.
         }
       });
       console.log("서버 응답 데이터:", response.data);
@@ -71,7 +72,7 @@ const WorkStatistics = () => {
       console.log("포맷된 데이터:", formattedData);
       setWorkStatistics(formattedData);
     } catch (error) {
-      console.error("작업량 통계를 가오는 중 오류 발생:", error.response ? error.response.data : error.message);
+      console.error("작업량 통계를 가져오는 중 오류 발생:", error.response ? error.response.data : error.message);
     } finally {
       setIsLoading(false);
     }

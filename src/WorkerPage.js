@@ -36,30 +36,22 @@ const WorkerPage = () => {
     console.log('Fetching worker data, groupNumber:', groupNumber);
     try {
       if (!groupNumber) {
-        console.error('groupNumber is undefined');
-        setIsLoading(false);
-        return;
+        throw new Error('Group number is undefined');
       }
-      console.log('Sending request to:', `/employee/work`);
-      const response = await axios.get(`/employee/work`, {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const response = await axios.get('/employee/work', {
         params: {
-          groupNumber,
-          year: new Date().getFullYear(),
-          month: new Date().getMonth() + 1
+          year,
+          month,
+          groupNumber
         }
       });
-      console.log('Server response:', response.data);
-      const data = response.data;
-      
-      if (Array.isArray(data) && data.length > 0) {
-        const today = new Date().toISOString().split('T')[0];
-        const todayEntry = data.find(item => new Date(item.date).toISOString().split('T')[0] === today);
-        setTodayData(todayEntry || null);
-        setWorkerData(data.filter(item => new Date(item.date).toISOString().split('T')[0] !== today));
-      } else {
-        setTodayData(null);
-        setWorkerData([]);
-      }
+      console.log('Worker data:', response.data);
+      setWorkerData(response.data);
+      const todayWork = response.data.find(work => new Date(work.date).toDateString() === now.toDateString());
+      setTodayData(todayWork || null);
     } catch (error) {
       console.error('Error fetching worker data:', error);
       setWorkerData([]);
