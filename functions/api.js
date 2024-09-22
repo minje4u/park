@@ -369,19 +369,16 @@ module.exports = { handler };
 router.get('/employee/work', async (req, res) => {
   try {
     await connectDB();
-    const { groupNumber, year, month } = req.query;
-    console.log('Requested params:', { groupNumber, year, month });
+    const { year, month } = req.query;
+    console.log('Requested params:', { year, month });
 
-    if (!groupNumber) {
-      return res.status(400).json({ error: 'groupNumber is required' });
+    if (!year || !month) {
+      return res.status(400).json({ error: 'year and month are required' });
     }
 
-    let query = { groupNumber: groupNumber };
-    if (year && month) {
-      const startDate = new Date(Date.UTC(year, month - 1, 1));
-      const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
-      query.date = { $gte: startDate, $lte: endDate };
-    }
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+    const query = { date: { $gte: startDate, $lte: endDate } };
 
     const workData = await Work.find(query).sort({ date: 1 });
     console.log('Found work data:', workData.length, 'records');

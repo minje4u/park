@@ -63,8 +63,7 @@ const WorkStatistics = () => {
       const response = await axios.get('/employee/work', {
         params: {
           year: selectedMonth.getFullYear(),
-          month: selectedMonth.getMonth() + 1,
-          groupNumber: ''
+          month: selectedMonth.getMonth() + 1
         }
       });
       console.log("서버 응답 데이터:", response.data);
