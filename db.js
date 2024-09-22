@@ -20,6 +20,10 @@ const WorkSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  groupNumber: {
+    type: String,
+    required: true
+  },
   date: {
     type: Date,
     required: true

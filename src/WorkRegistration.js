@@ -43,13 +43,17 @@ const WorkRegistration = ({ onConfirm }) => {
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      // 조 3만 추출하고 중량이 0 이상인 항목 필터링
       const filteredData = jsonData.filter(
         (row) => row['조'] === 3 && row['중량(Kg)'] > 0
       );
 
-      console.log("필터링된 데이터:", filteredData); // 필터링된 데이터 로깅
-      setFilteredContent(filteredData);
+      const enhancedData = filteredData.map((row) => ({
+        ...row,
+        groupNumber: `${row['조']}-${row['작업자ID'].toString().padStart(2, '0')}`
+      }));
+
+      console.log("필터링된 데이터:", enhancedData);
+      setFilteredContent(enhancedData);
     };
     reader.readAsArrayBuffer(file);
   };
@@ -62,21 +66,35 @@ const WorkRegistration = ({ onConfirm }) => {
     }
 
     try {
-      const workData = filteredContent.map(row => ({
-        date: new Date(selectedDate),
-        조: parseInt(row['조']),
-        employeeId: row['작업자ID'],
-        employeeName: row['작업자명'],
-        weight: parseFloat(row['중량(Kg)']),
-        workHours: parseFloat(row['총작업시간']) || 0,
-        totalWeight: parseFloat(row['중량(Kg)']),
-        payment: Math.floor(parseFloat(row['중량(Kg)']) * 270)
+      // 기존 데이터 확인
+      const checkResponse = await axios.get(`/employee/work/check/${selectedDate}`);
+      if (checkResponse.data.exists) {
+        const confirmOverwrite = window.confirm(`${selectedDate}에 이미 데이터가 존재합니다. 덮어쓰시겠습니까?`);
+        if (!confirmOverwrite) {
+          setErrorMessage("작업이 취소되었습니다.");
+          return;
+        }
+      }
+
+      const workData = await Promise.all(filteredContent.map(async row => {
+        const groupNumber = await generateGroupNumber(row['조'], row['작업자ID']);
+        return {
+          date: new Date(selectedDate),
+          조: parseInt(row['조']),
+          employeeId: row['작업자ID'],
+          employeeName: row['작업자명'],
+          weight: parseFloat(row['중량(Kg)']),
+          workHours: parseFloat(row['총작업시간']) || 0,
+          totalWeight: parseFloat(row['중량(Kg)']),
+          payment: Math.floor(parseFloat(row['중량(Kg)']) * 270),
+          groupNumber: groupNumber
+        };
       }));
 
-      console.log("전송할 데이터:", workData); // 전송 전 데이터 로깅
+      console.log("전송할 데이터:", JSON.stringify(workData, null, 2));
 
-      // 서버에 데이터 전송
-      const response = await axios.post('/employee/work', { workData });
+      // 서버에 데이터 전송 (덮어쓰기 모드)
+      const response = await axios.post('/employee/work', { workData, overwrite: true });
       
       console.log("서버 응답:", response.data);
 
@@ -89,6 +107,11 @@ const WorkRegistration = ({ onConfirm }) => {
       console.error("작업 등록 중 오류 발생:", error.response ? error.response.data : error.message);
       setErrorMessage("작업 등록에 실패했습니다. 다시 시도해주세요.");
     }
+  };
+
+  const generateGroupNumber = (조, employeeId) => {
+    const paddedId = employeeId.toString().padStart(2, '0');
+    return `${조}-${paddedId}`;
   };
 
   return (

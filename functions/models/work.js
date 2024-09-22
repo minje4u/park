@@ -7,8 +7,9 @@ const WorkSchema = new mongoose.Schema({
   employeeName: { type: String, required: true },
   weight: { type: Number, required: true },
   workHours: { type: Number, required: true },
-  totalWeight: { type: Number, required: true },
-  payment: { type: Number, required: true }
+  totalWeight: { type: Number },
+  payment: { type: Number, required: true },
+  groupNumber: { type: String, required: true }
 });
 
-module.exports = mongoose.model('Work', WorkSchema);
+module.exports = mongoose.model('work', WorkSchema, 'works');

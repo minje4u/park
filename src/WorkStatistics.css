@@ -187,3 +187,73 @@
   font-style: italic;
   color: #666;
 }
+
+.stats-summary {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.stats-card {
+  flex: 1;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin: 0 10px;
+}
+
+.stats-card h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.stats-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.stats-label {
+  color: #666;
+  font-size: 14px;
+}
+
+.stats-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.stats-card.today {
+  border-left: 4px solid #4CAF50;
+}
+
+.stats-card.today .stats-value {
+  color: #4CAF50;
+}
+
+.stats-card.month {
+  border-left: 4px solid #2196F3;
+}
+
+.stats-card.month .stats-value {
+  color: #2196F3;
+}
+
+@media (max-width: 768px) {
+  .stats-summary {
+    flex-direction: column;
+  }
+
+  .stats-card {
+    margin: 10px 0;
+  }
+}

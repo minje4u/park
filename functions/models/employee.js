@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const EmployeeSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
-  employeeId: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  groupNumber: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['worker', 'admin'], default: 'worker' },
   isInitialPassword: { type: Boolean, default: true }

@@ -1,28 +1,34 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import axios from 'axios';
-import "./WorkStatistics.css";  // 이 줄을 추가합니다.
+import "./WorkStatistics.css";
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? '/.netlify/functions/api'
   : 'http://localhost:8888/.netlify/functions/api';
 
-// axios 기본 URL 설정
 axios.defaults.baseURL = API_URL;
 
 const formatWorkData = (data) => {
   const formattedData = {};
-  data.forEach(work => {
+  data.forEach((work) => {
     if (work.weight > 0) {
-      if (!formattedData[work.employeeName]) {
-        formattedData[work.employeeName] = {
-          작업자ID: work.employeeId,
+      if (!formattedData[work.groupNumber]) {
+        formattedData[work.groupNumber] = {
+          employeeName: work.employeeName,
+          employeeId: work.employeeId,
           중량: {},
           작업시간: {}
         };
       }
       const day = new Date(work.date).getUTCDate();
-      formattedData[work.employeeName].중량[day] = (formattedData[work.employeeName].중량[day] || 0) + work.weight;
-      formattedData[work.employeeName].작업시간[day] = work.workHours;
+      if (!formattedData[work.groupNumber].중량[day]) {
+        formattedData[work.groupNumber].중량[day] = work.weight;
+        formattedData[work.groupNumber].작업시간[day] = work.workHours;
+      } else {
+        // 중복된 데이터가 있을 경우, 더 큰 값을 사용
+        formattedData[work.groupNumber].중량[day] = Math.max(formattedData[work.groupNumber].중량[day], work.weight);
+        formattedData[work.groupNumber].작업시간[day] = Math.max(formattedData[work.groupNumber].작업시간[day], work.workHours);
+      }
     }
   });
   return formattedData;
@@ -44,8 +50,10 @@ const WorkStatistics = () => {
   const [workStatistics, setWorkStatistics] = useState({});
   const [datesWithData, setDatesWithData] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [searchName, setSearchName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState({ key: 'groupNumber', direction: 'ascending' });
+  const [editingName, setEditingName] = useState(null);
   const tableRef = useRef(null);
 
   const fetchWorkStatistics = useCallback(async () => {
@@ -56,7 +64,7 @@ const WorkStatistics = () => {
         params: {
           year: selectedMonth.getFullYear(),
           month: selectedMonth.getMonth() + 1,
-          employeeName: '' // 모든 직원의 데이터를 가져오기 위해 빈 문자열 사용
+          groupNumber: ''
         }
       });
       console.log("서버 응답 데이터:", response.data);
@@ -64,7 +72,7 @@ const WorkStatistics = () => {
       console.log("포맷된 데이터:", formattedData);
       setWorkStatistics(formattedData);
     } catch (error) {
-      console.error("작업량 통계를 가져오는 중 오류 발생:", error.response ? error.response.data : error.message);
+      console.error("작업량 통계를 가오는 중 오류 발생:", error.response ? error.response.data : error.message);
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +101,6 @@ const WorkStatistics = () => {
         console.log('서버 응답:', response.data);
         
         if (response.data.message) {
-          // 삭제 성공 시 로직
           setWorkStatistics(prevStats => {
             const updatedStats = { ...prevStats };
             Object.keys(updatedStats).forEach(employeeName => {
@@ -109,29 +116,85 @@ const WorkStatistics = () => {
           });
           
           setDatesWithData(prevDates => prevDates.filter(d => d !== day));
-          alert(response.data.message);
-          fetchWorkStatistics();
+          alert('데이터가 성공적으로 삭제되었습니다.');
         } else {
           alert('데이터 삭제에 실패했습니다.');
         }
       } catch (error) {
         console.error('데이터 삭제 중 오류 발생:', error);
-        alert('데이터 삭제 중 오류가 발생했습니다: ' + (error.response?.data?.error || error.message));
+        alert('데이터 삭제 중 오류가 발생했습니다.');
       }
     }
-  }, [selectedMonth, fetchWorkStatistics]);
+  }, [selectedMonth]);
 
   const handleMonthChange = (event) => {
     const [year, month] = event.target.value.split('-');
     setSelectedMonth(new Date(year, month - 1));
   };
 
-  const filteredEmployees = useMemo(() => {
-    if (!searchName.trim()) return Object.keys(workStatistics);
-    return Object.keys(workStatistics).filter(name => 
-      name.toLowerCase().includes(searchName.toLowerCase())
-    );
-  }, [workStatistics, searchName]);
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const todayStats = useMemo(() => {
+    const today = new Date().getUTCDate();
+    let totalWeight = 0;
+    let totalPay = 0;
+
+    Object.values(workStatistics).forEach(employee => {
+      totalWeight += employee.중량[today] || 0;
+      totalPay += (employee.중량[today] || 0) * 270;
+    });
+
+    return { totalWeight, totalPay };
+  }, [workStatistics]);
+
+  const monthStats = useMemo(() => {
+    let totalWeight = 0;
+    let totalPay = 0;
+
+    Object.values(workStatistics).forEach(employee => {
+      Object.values(employee.중량).forEach(weight => {
+        totalWeight += weight;
+        totalPay += weight * 270;
+      });
+    });
+
+    return { totalWeight, totalPay };
+  }, [workStatistics]);
+
+  const sortedAndFilteredEmployees = useMemo(() => {
+    let sortableItems = Object.entries(workStatistics).map(([groupNumber, data]) => ({
+      groupNumber,
+      name: data.employeeName,
+      ...data,
+      sum: Object.values(data.중량 || {}).reduce((acc, val) => acc + (val || 0), 0),
+      pay: Math.floor(Object.values(data.중량 || {}).reduce((acc, val) => acc + (val || 0), 0) * 270)
+    }));
+
+    if (searchTerm.trim()) {
+      sortableItems = sortableItems.filter(item =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.groupNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    sortableItems.sort((a, b) => {
+      if (a[sortConfig.key] < b[sortConfig.key]) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (a[sortConfig.key] > b[sortConfig.key]) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
+      return 0;
+    });
+
+    return sortableItems;
+  }, [workStatistics, searchTerm, sortConfig]);
 
   useEffect(() => {
     const adjustFixedColumns = () => {
@@ -146,7 +209,6 @@ const WorkStatistics = () => {
           document.documentElement.style.setProperty('--first-column-width', `${firstColumnWidth}px`);
           document.documentElement.style.setProperty('--second-column-width', `${secondColumnWidth}px`);
           
-          // 모든 고정 열에 너비 적용
           table.querySelectorAll('.fixed-column:nth-child(1)').forEach(el => {
             el.style.width = `${firstColumnWidth}px`;
           });
@@ -165,9 +227,82 @@ const WorkStatistics = () => {
     };
   }, [workStatistics]);
 
+  const handleNameEdit = (groupNumber, newName) => {
+    setEditingName(groupNumber);
+    setWorkStatistics(prevStats => ({
+      ...prevStats,
+      [groupNumber]: {
+        ...prevStats[groupNumber],
+        employeeName: newName
+      }
+    }));
+  };
+
+  const handleNameSave = async (groupNumber) => {
+    try {
+      const newName = workStatistics[groupNumber].employeeName;
+      const response = await axios.put(`/employee/name/${groupNumber}`, { newName });
+      if (response.data.success) {
+        setEditingName(null);
+        // 작업자 관리 컴포넌트에 변경 사항 알림
+        if (typeof window.updateEmployeeName === 'function') {
+          window.updateEmployeeName(groupNumber, newName);
+        }
+        return true;
+      } else {
+        throw new Error(response.data.message || '서버에서 이름 수정을 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('이름 수정 중 오류:', error);
+      alert(error.message || '이름 수정에 실패했습니다.');
+      return false;
+    }
+  };
+
+  const handleNameInputKeyPress = async (event, groupNumber) => {
+    if (event.key === 'Enter') {
+      const success = await handleNameSave(groupNumber);
+      if (success) {
+        alert('이름이 성공적으로 수정되었습니다.');
+      }
+    }
+  };
+
+  const handleNameDoubleClick = (groupNumber) => {
+    setEditingName(groupNumber);
+  };
+
   return (
     <div className="work-statistics">
       <h2 className="section-title">작업량 통계</h2>
+      <div className="stats-summary">
+        <div className="stats-card today">
+          <h3>오늘 총계</h3>
+          <div className="stats-content">
+            <div className="stats-item">
+              <span className="stats-label">총 중량</span>
+              <span className="stats-value">{todayStats.totalWeight.toFixed(1)} kg</span>
+            </div>
+            <div className="stats-item">
+              <span className="stats-label">총 도급비용</span>
+              <span className="stats-value">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(todayStats.totalPay)}</span>
+            </div>
+          </div>
+        </div>
+        <div className="stats-card month">
+          <h3>이번달 총계</h3>
+          <div className="stats-content">
+            <div className="stats-item">
+              <span className="stats-label">총 중량</span>
+              <span className="stats-value">{monthStats.totalWeight.toFixed(1)} kg</span>
+            </div>
+            <div className="stats-item">
+              <span className="stats-label">총 도급비용</span>
+              <span className="stats-value">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(monthStats.totalPay)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="controls-container">
         <div className="date-picker-container">
           <input
@@ -180,9 +315,9 @@ const WorkStatistics = () => {
         <div className="search-container">
           <input
             type="text"
-            placeholder="이름으로 검색"
-            value={searchName}
-            onChange={(e) => setSearchName(e.target.value)}
+            placeholder="이름 또는 조판번호로 검색"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
         </div>
@@ -196,8 +331,12 @@ const WorkStatistics = () => {
           <table className="admin-table" ref={tableRef}>
             <thead>
               <tr>
-                <th className="id-column">ID</th>
-                <th className="name-column">이름</th>
+                <th className="id-column" onClick={() => handleSort('groupNumber')}>
+                  조판번호 {sortConfig.key === 'groupNumber' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
+                <th className="name-column" onClick={() => handleSort('name')}>
+                  이름 {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
                 {datesWithData.map((day) => (
                   <th key={day} className="date-column">
                     {day}일
@@ -209,30 +348,44 @@ const WorkStatistics = () => {
                     </span>
                   </th>
                 ))}
-                <th className="sum-column">합계</th>
-                <th className="pay-column">도급</th>
+                <th className="sum-column" onClick={() => handleSort('sum')}>
+                  합계 {sortConfig.key === 'sum' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
+                <th className="pay-column" onClick={() => handleSort('pay')}>
+                  도급 {sortConfig.key === 'pay' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map((name) => {
-                const stats = workStatistics[name];
-                const sum = Object.values(stats.중량 || {}).reduce((acc, val) => acc + (val || 0), 0);
-                const pay = Math.floor(sum * 270);
-                return (
-                  <tr key={name}>
-                    <td className="id-column">{stats.작업자ID}</td>
-                    <td className="name-column">{name}</td>
-                    {datesWithData.map((day) => (
-                      <td key={day} className="data-cell">
-                        <div className="weight">{stats.중량 && stats.중량[day] ? stats.중량[day].toFixed(1) : "-"}</div>
-                        <div className="work-hours">{stats.작업시간 && stats.작업시간[day] ? stats.작업시간[day] : "-"}</div>
-                      </td>
-                    ))}
-                    <td className="sum-cell">{sum.toFixed(1)}</td>
-                    <td className="pay-cell">{new Intl.NumberFormat('ko-KR').format(pay)}</td>
-                  </tr>
-                );
-              })}
+              {sortedAndFilteredEmployees.map((item) => (
+                <tr key={item.groupNumber}>
+                  <td className="id-column">{item.groupNumber}</td>
+                  <td className="name-column">
+                    {editingName === item.groupNumber ? (
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) => handleNameEdit(item.groupNumber, e.target.value)}
+                        onKeyPress={(e) => handleNameInputKeyPress(e, item.groupNumber)}
+                        onBlur={() => handleNameSave(item.groupNumber)}
+                        autoFocus
+                      />
+                    ) : (
+                      <span onDoubleClick={() => handleNameDoubleClick(item.groupNumber)}>
+                        {item.name}
+                      </span>
+                    )}
+                  </td>
+                  {datesWithData.map((day) => (
+                    <td key={day} className="data-cell">
+                      <div className="weight">{item.중량 && item.중량[day] ? item.중량[day].toFixed(1) : "-"}</div>
+                      <div className="work-hours">{item.작업시간 && item.작업시간[day] ? item.작업시간[day] : "-"}</div>
+                    </td>
+                  ))}
+                  <td className="sum-cell">{item.sum.toFixed(1)}</td>
+                  <td className="pay-cell">{new Intl.NumberFormat('ko-KR').format(item.pay)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

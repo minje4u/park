@@ -197,9 +197,35 @@
     margin-right: 5px;
 }
 
+.employee-table .admin-row {
+    background-color: #ffe6e6;
+}
+
+.employee-table .admin-row:hover {
+    background-color: #ffd6d6;
+}
+
 .loading {
     text-align: center;
     padding: 20px;
     font-style: italic;
     color: #666;
+}
+
+.admin-role {
+    font-weight: bold;
+    color: #ff0000;
+}
+
+.admin-row {
+    background-color: #ffe6e6;
+}
+
+.admin-row:hover {
+    background-color: #ffd6d6;
+}
+
+.admin-cell {
+    font-weight: bold;
+    color: #ff0000;
 }

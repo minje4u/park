@@ -22,13 +22,14 @@ function App() {
     }
   }, []);
 
-  const handleLogin = (name, userRole) => {
+  const handleLogin = (name, userRole, groupNumber) => {
     setIsLoggedIn(true);
     setRole(userRole);
     setUsername(name);
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('userRole', userRole);
     localStorage.setItem('username', name);
+    localStorage.setItem('groupNumber', groupNumber);
   };
 
   const handleLogout = () => {
@@ -50,7 +51,7 @@ function App() {
         <Route path="/admin" element={
           isLoggedIn && role === "admin" ? <AdminPage username={username} onLogout={handleLogout} /> : <Navigate to="/login" replace />
         } />
-        <Route path="/worker/:username" element={
+        <Route path="/worker/:groupNumber" element={
           isLoggedIn && role === "worker" ? <WorkerPage onLogout={handleLogout} /> : <Navigate to="/login" replace />
         } />
         <Route path="/employees" element={

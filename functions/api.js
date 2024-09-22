@@ -52,7 +52,8 @@ const connectDB = async () => {
       conn = await mongoose.connect(process.env.MONGODB_URI, {
         serverSelectionTimeoutMS: 5000,
         useNewUrlParser: true,
-        useUnifiedTopology: true
+        useUnifiedTopology: true,
+        dbName: 'myDatabase'
       });
       console.log('MongoDB connected successfully');
       await createInitialAdminAccount();
@@ -69,8 +70,8 @@ const createInitialAdminAccount = async () => {
     const adminExists = await Employee.findOne({ role: 'admin' });
     if (!adminExists) {
       const newAdmin = new Employee({
-        name: 'admin',
-        employeeId: 'ADMIN001',
+        name: '관리자',
+        groupNumber: 'admin',
         password: '0000',
         role: 'admin',
         isInitialPassword: true
@@ -80,8 +81,27 @@ const createInitialAdminAccount = async () => {
     } else {
       console.log('관리자 계정이 이미 존재합니다.');
     }
+    await updateMissingGroupNumbers();
   } catch (error) {
     console.error('초기 관리자 계정 생성 중 오류 발생:', error);
+  }
+};
+
+const generateGroupNumber = (조, employeeId) => {
+  const paddedId = employeeId.toString().padStart(2, '0');
+  return `${조}-${paddedId}`;
+};
+
+const updateMissingGroupNumbers = async () => {
+  try {
+    const works = await Work.find({ groupNumber: { $exists: false } });
+    for (let work of works) {
+      work.groupNumber = generateGroupNumber(work.조, work.employeeId);
+      await work.save();
+    }
+    console.log(`${works.length}개의 작업 데이터에 groupNumber가 추가되었습니다.`);
+  } catch (error) {
+    console.error('Error updating missing group numbers:', error);
   }
 };
 
@@ -89,17 +109,18 @@ const createInitialAdminAccount = async () => {
 router.post('/login', async (req, res) => {
   try {
     await connectDB();
-    const { name, password } = req.body;
-    const employee = await Employee.findOne({ name });
+    const { groupNumber, password } = req.body;
+    const employee = await Employee.findOne({ groupNumber });
     if (!employee) {
-      return res.status(401).json({ error: '이름 또는 비밀번호가 올바르지 않습니다.' });
+      return res.status(401).json({ error: '조판번호 또는 비밀번호가 올바르지 않습니다.' });
     }
     const isMatch = await employee.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ error: '이름 또는 비밀번호가 올바르지 않습니다.' });
+      return res.status(401).json({ error: '조판번호 또는 비밀번호가 올바르지 않습니다.' });
     }
     res.json({ 
       name: employee.name, 
+      groupNumber: employee.groupNumber,
       role: employee.role,
       isInitialPassword: employee.isInitialPassword
     });
@@ -113,27 +134,68 @@ router.post('/login', async (req, res) => {
 router.post('/employee/work', async (req, res) => {
   try {
     await connectDB();
-    const workData = req.body.workData;
+    const { workData, overwrite } = req.body;
     console.log("받은 작업 데이터:", workData);
 
-    // 데이터의 날짜 확인 (첫 번째 항목의 날짜 사용)
-    const dataDate = new Date(workData[0].date);
-    const startOfDay = new Date(dataDate.getFullYear(), dataDate.getMonth(), dataDate.getDate());
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setDate(endOfDay.getDate() + 1);
+    // groupNumber가 없는 데이터 필터링
+    const invalidData = workData.filter(item => !item.groupNumber);
+    if (invalidData.length > 0) {
+      return res.status(400).json({ error: 'Some data is missing groupNumber', invalidData });
+    }
 
-    // 같은 날짜의 기존 데이터 삭제
-    await Work.deleteMany({
-      date: { $gte: startOfDay, $lt: endOfDay }
-    });
+    if (overwrite) {
+      // 해당 날짜의 기존 데이터 삭제
+      const date = new Date(workData[0].date);
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+      await Work.deleteMany({ date: { $gte: startOfDay, $lt: endOfDay } });
+    } else {
+      // 중복 데이터 처리
+      for (const work of workData) {
+        const existingWork = await Work.findOne({
+          date: work.date,
+          groupNumber: work.groupNumber
+        });
+        if (existingWork) {
+          existingWork.weight = Math.max(existingWork.weight, work.weight);
+          existingWork.workHours = Math.max(existingWork.workHours, work.workHours);
+          await existingWork.save();
+        } else {
+          await Work.create(work);
+        }
+      }
+      return res.status(201).json({ message: '작업 데이터가 성공적으로 저장되었습니다.' });
+    }
 
-    // 새 데이터 저장
     const savedWork = await Work.insertMany(workData);
     console.log("저장된 작업 데이터:", savedWork);
     res.status(201).json(savedWork);
   } catch (error) {
     console.error('Error saving work data:', error);
-    res.status(500).json({ error: '작업 데이터 저장에 실패했습니다.' });
+    console.error('Error details:', error.message);
+    if (error.stack) console.error('Error stack:', error.stack);
+    res.status(500).json({ error: '작업 데이터 저장에 실패했습니다.', details: error.message });
+  }
+});
+
+// 특정 날짜의 작업 데이터 존재 여부 확인
+router.get('/employee/work/check/:date', async (req, res) => {
+  try {
+    await connectDB();
+    const { date } = req.params;
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    const existingData = await Work.findOne({
+      date: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    res.json({ exists: !!existingData });
+  } catch (error) {
+    console.error('작업 데이터 확인 중 오류:', error);
+    res.status(500).json({ error: '작업 데이터 확인 중 오류가 발생했습니다.' });
   }
 });
 
@@ -191,15 +253,16 @@ router.delete('/notices/:id', async (req, res) => {
 // 비밀번호 변경 라우트
 router.post('/change-password', async (req, res) => {
   try {
-    const { name, newPassword } = req.body;
-    const employee = await Employee.findOne({ name });
+    await connectDB();
+    const { groupNumber, newPassword } = req.body;
+    const employee = await Employee.findOne({ groupNumber });
     if (!employee) {
-      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '작업자를 찾을 수 없습니다.' });
     }
     employee.password = newPassword;
     employee.isInitialPassword = false;
     await employee.save();
-    res.json({ message: "비밀번호가 성공적으로 변경되었습니다." });
+    res.json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
   } catch (error) {
     console.error('비밀번호 변경 중 오류:', error);
     res.status(500).json({ error: '비밀번호 변경 중 오류가 발생했습니다.' });
@@ -207,10 +270,10 @@ router.post('/change-password', async (req, res) => {
 });
 
 // 작업자 삭제
-router.delete('/employees/:id', async (req, res) => {
+router.delete('/employees/:groupNumber', async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await Employee.findByIdAndDelete(id);
+    const { groupNumber } = req.params;
+    const result = await Employee.findOneAndDelete({ groupNumber });
     if (result) {
       res.json({ message: '작업자가 성공적으로 삭제되었습니다.' });
     } else {
@@ -279,8 +342,22 @@ router.post('/reset-database', async (req, res) => {
 });
 
 // 서버 시작 시 데이터베이스 연결 및 초기 관리자 계정 생성
-connectDB().then(() => {
+connectDB().then(async () => {
   console.log('서버가 시작되었습니다.');
+  try {
+    const works = await Work.find({ groupNumber: { $exists: false } });
+    
+    let updatedCount = 0;
+    for (let work of works) {
+      work.groupNumber = `${work.조}-${work.employeeId.toString().padStart(2, '0')}`;
+      await work.save();
+      updatedCount++;
+    }
+
+    console.log(`${updatedCount}개의 작업 데이터에 groupNumber가 추가되었습니다.`);
+  } catch (error) {
+    console.error('groupNumber 업데이트 중 오류 발생:', error);
+  }
 }).catch(err => {
   console.error('서버 시작 중 오류 발생:', err);
 });
@@ -292,17 +369,18 @@ module.exports = { handler };
 router.get('/employee/work', async (req, res) => {
   try {
     await connectDB();
-    const { employeeName, year, month } = req.query;
-    console.log('Requested params:', { employeeName, year, month });
+    const { groupNumber, year, month } = req.query;
+    console.log('Requested params:', { groupNumber, year, month });
 
-    let query = {};
+    if (!groupNumber) {
+      return res.status(400).json({ error: 'groupNumber is required' });
+    }
+
+    let query = { groupNumber: groupNumber };
     if (year && month) {
       const startDate = new Date(Date.UTC(year, month - 1, 1));
       const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
       query.date = { $gte: startDate, $lte: endDate };
-    }
-    if (employeeName && employeeName !== '') {
-      query.employeeName = employeeName;
     }
 
     const workData = await Work.find(query).sort({ date: 1 });
@@ -331,10 +409,17 @@ router.get('/employees', async (req, res) => {
 router.post('/employees', async (req, res) => {
   try {
     await connectDB();
-    const { name, employeeId, role, password, isInitialPassword } = req.body;
+    const { name, groupNumber, role, password, isInitialPassword } = req.body;
+
+    // 중복 검사
+    const existingEmployee = await Employee.findOne({ groupNumber });
+    if (existingEmployee) {
+      return res.status(400).json({ error: '이미 존재하는 조판번호입니다.' });
+    }
+
     const newEmployee = new Employee({
       name,
-      employeeId,
+      groupNumber,
       role,
       password,
       isInitialPassword
@@ -343,7 +428,72 @@ router.post('/employees', async (req, res) => {
     res.status(201).json(savedEmployee);
   } catch (error) {
     console.error('Error adding employee:', error);
-    res.status(500).json({ error: '작업자 추가에 실패했습니다.' });
+    res.status(500).json({ error: '작업자 추가에 실패했습니다.', details: error.message });
+  }
+});
+
+// 작업자 이름 수정
+router.put('/employee/name/:groupNumber', async (req, res) => {
+  try {
+    await connectDB();
+    const { groupNumber } = req.params;
+    const { newName } = req.body;
+
+    const work = await Work.findOne({ groupNumber });
+    const employee = await Employee.findOne({ groupNumber });
+
+    if (!work && !employee) {
+      return res.status(404).json({ success: false, message: '해당 조판번호의 작업자를 찾을 수 없습니다.' });
+    }
+
+    if (work) {
+      work.employeeName = newName;
+      await work.save();
+    }
+
+    if (employee) {
+      employee.name = newName;
+      await employee.save();
+    }
+
+    res.json({ success: true, message: '이름이 성공적으로 수정되었습니다.' });
+  } catch (error) {
+    console.error('이름 수정 중 오류:', error);
+    res.status(500).json({ success: false, message: '이름 수정에 실패했습니다.' });
+  }
+});
+
+router.post('/update-group-numbers', async (req, res) => {
+  try {
+    await connectDB();
+    const works = await Work.find({ groupNumber: { $exists: false } });
+    
+    let updatedCount = 0;
+    for (let work of works) {
+      work.groupNumber = `${work.조}-${work.employeeId.toString().padStart(2, '0')}`;
+      await work.save();
+      updatedCount++;
+    }
+
+    res.status(200).json({ message: `${updatedCount}개의 작업 데이터에 groupNumber가 추가되었습니다.` });
+  } catch (error) {
+    console.error('Error updating group numbers:', error);
+    res.status(500).json({ error: 'groupNumber 업데이트에 실패했습니다.' });
+  }
+});
+
+router.get('/employee/:groupNumber', async (req, res) => {
+  try {
+    await connectDB();
+    const { groupNumber } = req.params;
+    const employee = await Employee.findOne({ groupNumber });
+    if (!employee) {
+      return res.status(404).json({ error: '작업자를 찾을 수 없습니다.' });
+    }
+    res.json({ name: employee.name });
+  } catch (error) {
+    console.error('Error fetching employee name:', error);
+    res.status(500).json({ error: '작업자 정보를 가져오는 데 실패했습니다.' });
   }
 });
 

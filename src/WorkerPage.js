@@ -10,7 +10,9 @@ const API_URL = process.env.NODE_ENV === 'production'
 axios.defaults.baseURL = API_URL;
 
 const WorkerPage = () => {
-  const { username } = useParams();
+  const { groupNumber } = useParams();
+  const formattedGroupNumber = groupNumber ? groupNumber.toString() : undefined;
+  const [workerName, setWorkerName] = useState('');
   const [workerData, setWorkerData] = useState([]);
   const [todayData, setTodayData] = useState(null);
   const [currentMonth, setCurrentMonth] = useState('');
@@ -20,11 +22,33 @@ const WorkerPage = () => {
   const [showLastMonthModal, setShowLastMonthModal] = useState(false);
   const [lastMonthData, setLastMonthData] = useState(null);
 
+  const fetchWorkerName = useCallback(async () => {
+    try {
+      const response = await axios.get(`/employee/${formattedGroupNumber}`);
+      setWorkerName(response.data.name);
+    } catch (error) {
+      console.error('Error fetching worker name:', error);
+    }
+  }, [formattedGroupNumber]);
+
   const fetchWorkerData = useCallback(async () => {
     setIsLoading(true);
+    console.log('Fetching worker data, groupNumber:', groupNumber);
     try {
-      const response = await axios.get(`/employee/work?employeeName=${encodeURIComponent(username)}`);
-      console.log('서버 응답:', response.data);
+      if (!groupNumber) {
+        console.error('groupNumber is undefined');
+        setIsLoading(false);
+        return;
+      }
+      console.log('Sending request to:', `/employee/work`);
+      const response = await axios.get(`/employee/work`, {
+        params: {
+          groupNumber,
+          year: new Date().getFullYear(),
+          month: new Date().getMonth() + 1
+        }
+      });
+      console.log('Server response:', response.data);
       const data = response.data;
       
       if (Array.isArray(data) && data.length > 0) {
@@ -37,36 +61,32 @@ const WorkerPage = () => {
         setWorkerData([]);
       }
     } catch (error) {
-      console.error('작업자 데이터 조회 중 오류 발생:', error);
-      if (error.response) {
-        console.error('서버 응답:', error.response.data);
-      } else if (error.request) {
-        console.error('서버 응답 없음');
-      } else {
-        console.error('요청 설정 중 오류:', error.message);
-      }
+      console.error('Error fetching worker data:', error);
       setWorkerData([]);
       setTodayData(null);
     } finally {
       setIsLoading(false);
     }
-  }, [username]);
+  }, [groupNumber]);
 
   const fetchLastMonthData = useCallback(async () => {
     try {
-      const response = await axios.get(`/employee/lastmonth?employeeName=${encodeURIComponent(username)}`);
+      const response = await axios.get(`/employee/lastmonth?groupNumber=${encodeURIComponent(groupNumber)}`);
       setLastMonthData(response.data);
     } catch (error) {
       console.error('지난달 데이터 조회 중 오류 발생:', error);
       setLastMonthData(null);
     }
-  }, [username]);
+  }, [groupNumber]);
 
   useEffect(() => {
-    fetchWorkerData();
+    if (formattedGroupNumber) {
+      fetchWorkerName();
+      fetchWorkerData();
+    }
     fetchNotices();
     setCurrentMonth(getCurrentMonth());
-  }, [fetchWorkerData]);
+  }, [fetchWorkerData, formattedGroupNumber, fetchWorkerName]);
 
   const getCurrentMonth = () => {
     const now = new Date();
@@ -132,11 +152,29 @@ const WorkerPage = () => {
     return <p>데이터를 불러오는 중...</p>;
   };
 
+  // 캡처 방지 코드 추가
+  useEffect(() => {
+    const handleContextMenu = (e) => e.preventDefault();
+    const handleKeyDown = (e) => {
+      if (e.key === 'PrintScreen' || (e.ctrlKey && e.key === 'p')) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
     <div className="worker-container">
       <div className="worker-header">
         <div className="worker-header-content">
-          <h1>{username}<span className="header-small">님의</span></h1>
+          <h1>{workerName}<span className="header-small">님의</span></h1>
           <h2>{currentMonth} 작업현황</h2>
         </div>
       </div>
@@ -177,7 +215,7 @@ const WorkerPage = () => {
               <span className="stat-value">{todayData.weight.toFixed(2)} Kg</span>
             </div>
             <div className="stat-item">
-              <span className="stat-label">작업시간</span>
+              <span className="stat-label">작업간</span>
               <span className="stat-value">{todayData.workHours}</span>
             </div>
             <div className="stat-item">
@@ -210,7 +248,7 @@ const WorkerPage = () => {
             </thead>
             <tbody>
               {workerData.map((item, index) => (
-                <tr key={item.date} className={index % 2 === 0 ? 'even-row' : 'odd-row'}>
+                <tr key={`${item.date}-${index}`} className={index % 2 === 0 ? 'even-row' : 'odd-row'}>
                   <td>{new Date(item.date).toLocaleDateString()}</td>
                   <td>{item.weight.toFixed(2)}</td>
                   <td>{item.workHours}</td>

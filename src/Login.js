@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import "./Login.css";
 
 const Login = ({ onLogin }) => {
-  const [name, setName] = useState("");
+  const [groupNumber, setGroupNumber] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -16,15 +16,15 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
     setErrorMessage("");
     try {
-      const response = await axios.post('/login', { name, password });
+      const response = await axios.post('/login', { groupNumber, password });
       if (response.data.isInitialPassword) {
         setShowChangePassword(true);
       } else {
-        onLogin(response.data.name, response.data.role);
+        onLogin(response.data.name, response.data.role, response.data.groupNumber);
         if (response.data.role === 'admin') {
           navigate('/admin');
         } else {
-          navigate(`/worker/${response.data.name}`);
+          navigate(`/worker/${response.data.groupNumber}`);
         }
       }
     } catch (error) {
@@ -40,7 +40,7 @@ const Login = ({ onLogin }) => {
       return;
     }
     try {
-      const response = await axios.post('/change-password', { name, newPassword });
+      const response = await axios.post('/change-password', { groupNumber, newPassword });
       console.log('비밀번호 변경 응답:', response.data);
       if (response.data.message === "비밀번호가 성공적으로 변경되었습니다.") {
         alert("비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해주세요.");
@@ -82,9 +82,9 @@ const Login = ({ onLogin }) => {
           <form onSubmit={handleSubmit}>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="이름"
+              value={groupNumber}
+              onChange={(e) => setGroupNumber(e.target.value)}
+              placeholder="조-ID"
               required
             />
             <input
