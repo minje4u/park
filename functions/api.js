@@ -8,8 +8,12 @@ const Notice = require('./models/notice');
 const express = require('express');
 const serverless = require('serverless-http');
 const cors = require('cors');
+const webpush = require('web-push');
+const EventEmitter = require('events');
+const eventEmitter = new EventEmitter();
 
 const app = express();
+app.use(express.static('public'));
 const router = express.Router();
 
 const getWorkerData = require('./getWorkerData');
@@ -169,6 +173,7 @@ router.post('/employee/work', async (req, res) => {
 
     const savedWork = await Work.insertMany(workData);
     console.log("저장된 작업 데이터:", savedWork);
+    eventEmitter.emit('newEvent', { type: 'work', data: savedWork });
     res.status(201).json(savedWork);
   } catch (error) {
     console.error('Error saving work data:', error);
@@ -215,6 +220,8 @@ router.post('/notices', async (req, res) => {
     const { title, content } = req.body;
     const newNotice = new Notice({ title, content });
     const savedNotice = await newNotice.save();
+    eventEmitter.emit('newEvent', { type: 'notice', data: savedNotice });
+    sendNotification({ title: '새 공지사항', body: title });
     res.status(201).json(savedNotice);
   } catch (error) {
     res.status(500).json({ error: '공지사항 등록 중 오류가 발생했습니다.' });
@@ -262,7 +269,7 @@ router.post('/change-password', async (req, res) => {
     employee.password = newPassword;
     employee.isInitialPassword = false;
     await employee.save();
-    res.json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
+    res.json({ message: '비밀번호가 성공적으 변경되었습니다.' });
   } catch (error) {
     console.error('비밀번호 변경 중 오류:', error);
     res.status(500).json({ error: '비밀번호 변경 중 오류가 발생했습니다.' });
@@ -458,7 +465,7 @@ router.put('/employee/name/:groupNumber', async (req, res) => {
       await employee.save();
     }
 
-    res.json({ success: true, message: '이름이 성공적으로 수정되었습니다.' });
+    res.json({ success: true, message: '이름이 성공적으로 수정었습니다.' });
   } catch (error) {
     console.error('이름 수정 중 오류:', error);
     res.status(500).json({ success: false, message: '이름 수정에 실패했습니다.' });
@@ -497,5 +504,48 @@ router.get('/employee/:groupNumber', async (req, res) => {
     console.error('Error fetching employee name:', error);
     res.status(500).json({ error: '작업자 정보를 가져오는 데 실패했습니다.' });
   }
+});
+
+webpush.setVapidDetails(
+  'mailto:minje4u@gmail.com',
+  process.env.REACT_APP_PUBLIC_VAPID_KEY,
+  process.env.PRIVATE_VAPID_KEY
+);
+
+const subscriptions = [];
+
+router.post('/subscribe', (req, res) => {
+  const subscription = req.body;
+  subscriptions.push(subscription);
+  res.status(201).json({});
+});
+
+const sendNotification = (message) => {
+  subscriptions.forEach(subscription => {
+    webpush.sendNotification(subscription, JSON.stringify(message))
+      .catch(error => {
+        console.error('Error sending notification:', error);
+        console.error('Error details:', error.message);
+        if (error.stack) console.error('Error stack:', error.stack);
+      });
+  });
+};
+
+// SSE 엔드포인트 추가
+router.get('/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const onNewEvent = (event) => {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
+  };
+
+  eventEmitter.on('newEvent', onNewEvent);
+
+  req.on('close', () => {
+    eventEmitter.removeListener('newEvent', onNewEvent);
+  });
 });
 

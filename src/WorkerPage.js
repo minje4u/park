@@ -21,6 +21,31 @@ const WorkerPage = () => {
   const [selectedNotice, setSelectedNotice] = useState(null);
   const [showLastMonthModal, setShowLastMonthModal] = useState(false);
   const [lastMonthData, setLastMonthData] = useState(null);
+  const [notification, setNotification] = useState(null);
+
+  useEffect(() => {
+    console.log('Connecting to /events'); // 로그 추가
+    const eventSource = new EventSource('/.netlify/functions/api/events');
+    eventSource.onmessage = (event) => {
+      const eventData = JSON.parse(event.data);
+      console.log('Received event data:', eventData); // 로그 추가
+      setNotification(eventData);
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('EventSource failed:', error); // 에러 로그 추가
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (notification) {
+      alert(`새로운 ${notification.type === 'notice' ? '공지사항' : '작업자료'}가 등록되었습니다.`);
+    }
+  }, [notification]);
 
   const fetchWorkerName = useCallback(async () => {
     try {
@@ -160,6 +185,54 @@ const WorkerPage = () => {
       document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('keydown', handleKeyDown);
     };
+  }, []);
+
+  useEffect(() => {
+    const publicVapidKey = process.env.REACT_APP_PUBLIC_VAPID_KEY;
+
+    if (!publicVapidKey) {
+      console.error('VAPID 키가 설정되지 않았습니다.');
+      return;
+    }
+
+    const urlBase64ToUint8Array = (base64String) => {
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding)
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    };
+
+    const subscribeUser = async () => {
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register('/service-worker.js');
+          console.log('Service Worker registration successful:', registration);
+
+          if (registration.active) {
+            const subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+            });
+            console.log('Push subscription successful:', subscription);
+            await axios.post('/subscribe', subscription);
+          } else {
+            console.error('Service Worker registration failed: No active service worker');
+          }
+        } catch (error) {
+          console.error('Service Worker registration error:', error);
+        }
+      } else {
+        console.error('Service Worker not supported in this browser');
+      }
+    };
+
+    subscribeUser();
   }, []);
 
   return (
