@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import axios from 'axios';
 import "./WorkStatistics.css";
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? '/.netlify/functions/api'
@@ -272,6 +274,136 @@ const WorkStatistics = () => {
     setEditingName(groupNumber);
   };
 
+
+const exportToExcel = async () => {
+  const workbook = new ExcelJS.Workbook();
+
+  // 데이터가 있는 월만 필터링
+  const monthsWithData = Array.from({ length: 12 }, (_, i) => i)
+    .filter(month => {
+      return Object.values(workStatistics).some(employee => 
+        Object.keys(employee.중량).some(day => {
+          const date = new Date(selectedMonth.getFullYear(), month, day);
+          return date.getMonth() === month;
+        })
+      );
+    });
+
+  // 데이터가 있는 월에 대해서만 시트 생성
+  monthsWithData.forEach(month => {
+    const worksheet = workbook.addWorksheet(`${month + 1}월`);
+
+    // 해당 년월 추가
+    const yearMonth = `${selectedMonth.getFullYear()}년 ${month + 1}월`;
+    worksheet.mergeCells('A1:E1');
+    const titleCell = worksheet.getCell('A1');
+    titleCell.value = yearMonth;
+    titleCell.font = { bold: true, size: 16 };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // 헤더 추가
+    const headers = ['조판번호', '작업자명', ...datesWithData.map(day => `${day}일`), '중량합계', '도급'];
+    const headerRow = worksheet.addRow(headers);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4CAF50' }
+      };
+      cell.font = { color: { argb: 'FFFFFFFF' } };
+    });
+
+    // 해당 월의 데이터만 필터링
+    const monthData = Object.entries(workStatistics).map(([groupNumber, data]) => {
+      const filteredWeights = Object.entries(data.중량).reduce((acc, [day, weight]) => {
+        const date = new Date(selectedMonth.getFullYear(), month, day);
+        if (date.getMonth() === month) {
+          acc[day] = weight;
+        }
+        return acc;
+      }, {});
+
+      return {
+        groupNumber,
+        name: data.employeeName,
+        중량: filteredWeights,
+        sum: Object.values(filteredWeights).reduce((sum, weight) => sum + weight, 0),
+        pay: Object.values(filteredWeights).reduce((sum, weight) => sum + weight * 270, 0)
+      };
+    }).filter(item => Object.keys(item.중량).length > 0);
+
+    // 데이터 추가
+    monthData.forEach((item, index) => {
+      const rowData = [
+        item.groupNumber,
+        item.name,
+        ...datesWithData.map(day => {
+          const date = new Date(selectedMonth.getFullYear(), month, day);
+          return (date.getMonth() === month && item.중량[day]) ? item.중량[day].toFixed(1) : '-';
+        }),
+        item.sum.toFixed(1) + ' kg',
+        new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(item.pay)
+      ];
+      const row = worksheet.addRow(rowData);
+      row.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      // 3줄당 배경색 반전
+      if (index % 6 < 3) {
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF0F0F0' }
+          };
+        });
+      }
+    });
+
+    // 총합계 행 추가
+    const totalRow = worksheet.addRow(['총합계']);
+    worksheet.mergeCells(`A${worksheet.rowCount}:B${worksheet.rowCount}`);
+    totalRow.getCell(1).font = { bold: true };
+    totalRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // 일별 총합계
+    datesWithData.forEach((day, index) => {
+      const date = new Date(selectedMonth.getFullYear(), month, day);
+      if (date.getMonth() === month) {
+        const dailyTotal = monthData.reduce((sum, item) => sum + (item.중량[day] || 0), 0);
+        const dailyPay = monthData.reduce((sum, item) => sum + (item.중량[day] ? item.중량[day] * 270 : 0), 0);
+        totalRow.getCell(index + 3).value = `${dailyTotal.toFixed(1)}kg\n${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(dailyPay)}`;
+        totalRow.getCell(index + 3).alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
+      }
+    });
+
+    // 월별 총합계
+    const monthlyTotal = monthData.reduce((sum, item) => sum + item.sum, 0);
+    const monthlyPay = monthData.reduce((sum, item) => sum + item.pay, 0);
+    totalRow.getCell(datesWithData.length + 3).value = `${monthlyTotal.toFixed(1)} kg`;
+    totalRow.getCell(datesWithData.length + 4).value = `${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(monthlyPay)}`;
+    
+    // 총 중량합계와 총 도급비용 셀 정중앙 정렬
+    totalRow.getCell(datesWithData.length + 3).alignment = { horizontal: 'center', vertical: 'middle' };
+    totalRow.getCell(datesWithData.length + 4).alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // 열 너비 자동 조정
+    worksheet.columns.forEach(column => {
+      column.width = 15;
+    });
+  });
+
+  // 현재 시간을 파일명에 포함
+  const now = new Date();
+  const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+
+  // 파일 저장
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  saveAs(blob, `${selectedMonth.getFullYear()}년_작업내역_${timestamp}.xlsx`);
+};
+
   return (
     <div className="work-statistics">
       <h2 className="section-title">작업량 통계</h2>
@@ -281,11 +413,11 @@ const WorkStatistics = () => {
           <div className="stats-content">
             <div className="stats-item">
               <span className="stats-label">총 중량</span>
-              <span className="stats-value">{todayStats.totalWeight.toFixed(1)} kg</span>
+              <span className="stats-value">{Math.round(todayStats.totalWeight)} kg</span>
             </div>
             <div className="stats-item">
               <span className="stats-label">총 도급비용</span>
-              <span className="stats-value">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(todayStats.totalPay)}</span>
+              <span className="stats-value">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(todayStats.totalPay)}</span>
             </div>
           </div>
         </div>
@@ -294,11 +426,11 @@ const WorkStatistics = () => {
           <div className="stats-content">
             <div className="stats-item">
               <span className="stats-label">총 중량</span>
-              <span className="stats-value">{monthStats.totalWeight.toFixed(1)} kg</span>
+              <span className="stats-value">{Math.round(monthStats.totalWeight)} kg</span>
             </div>
             <div className="stats-item">
               <span className="stats-label">총 도급비용</span>
-              <span className="stats-value">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(monthStats.totalPay)}</span>
+              <span className="stats-value">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(monthStats.totalPay)}</span>
             </div>
           </div>
         </div>
@@ -321,6 +453,7 @@ const WorkStatistics = () => {
             className="search-input"
           />
         </div>
+        <button onClick={exportToExcel} className="export-button">엑셀로 저장</button>
       </div>
       {isLoading ? (
         <div className="loading">데이터를 불러오는 중...</div>
@@ -349,7 +482,7 @@ const WorkStatistics = () => {
                   </th>
                 ))}
                 <th className="sum-column" onClick={() => handleSort('sum')}>
-                  합계 {sortConfig.key === 'sum' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                  중량합계 {sortConfig.key === 'sum' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
                 </th>
                 <th className="pay-column" onClick={() => handleSort('pay')}>
                   도급 {sortConfig.key === 'pay' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
@@ -382,10 +515,29 @@ const WorkStatistics = () => {
                       <div className="work-hours">{item.작업시간 && item.작업시간[day] ? item.작업시간[day] : "-"}</div>
                     </td>
                   ))}
-                  <td className="sum-cell">{item.sum.toFixed(1)}</td>
-                  <td className="pay-cell">{new Intl.NumberFormat('ko-KR').format(item.pay)}</td>
+                  <td className="sum-cell">{item.sum.toFixed(1)} kg</td>
+                  <td className="pay-cell">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(item.pay)}</td>
                 </tr>
               ))}
+              <tr className="total-row">
+                <td colSpan="2" className="total-label">일별 합계</td>
+                {datesWithData.map((day) => {
+                  const dailyTotal = sortedAndFilteredEmployees.reduce((sum, item) => sum + (item.중량[day] || 0), 0);
+                  const dailyPay = sortedAndFilteredEmployees.reduce((sum, item) => sum + (item.중량[day] ? item.중량[day] * 270 : 0), 0);
+                  return (
+                    <td key={day} className="total-cell">
+                      <div className="weight">{dailyTotal.toFixed(1)} kg</div>
+                      <div className="pay">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(dailyPay)}</div>
+                    </td>
+                  );
+                })}
+                <td className="total-cell">
+                  <div className="weight">{monthStats.totalWeight.toFixed(1)} kg</div>
+                </td>
+                <td className="total-cell">
+                  <div className="pay">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(monthStats.totalPay)}</div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

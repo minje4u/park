@@ -533,10 +533,11 @@ const sendNotification = (message) => {
 
 // SSE 엔드포인트 추가
 router.get('/events', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
 
   const onNewEvent = (event) => {
     res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -546,6 +547,16 @@ router.get('/events', (req, res) => {
 
   req.on('close', () => {
     eventEmitter.removeListener('newEvent', onNewEvent);
+    res.end();
+  });
+
+  // 연결 유지를 위한 주기적인 ping 전송
+  const pingInterval = setInterval(() => {
+    res.write(': ping\n\n');
+  }, 30000);
+
+  req.on('close', () => {
+    clearInterval(pingInterval);
   });
 });
 

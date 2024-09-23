@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import axios from 'axios';
 import "./WorkerPage.css";
@@ -22,18 +22,18 @@ const WorkerPage = () => {
   const [showLastMonthModal, setShowLastMonthModal] = useState(false);
   const [lastMonthData, setLastMonthData] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
   useEffect(() => {
-    console.log('Connecting to /events'); // 로그 추가
-    const eventSource = new EventSource('/.netlify/functions/api/events');
+    const eventSource = new EventSource('https://parkpa.netlify.app/.netlify/functions/api/events');
     eventSource.onmessage = (event) => {
       const eventData = JSON.parse(event.data);
-      console.log('Received event data:', eventData); // 로그 추가
+      console.log('Received event data:', eventData);
       setNotification(eventData);
     };
 
     eventSource.onerror = (error) => {
-      console.error('EventSource failed:', error); // 에러 로그 추가
+      console.error('EventSource failed:', error);
     };
 
     return () => {
@@ -128,8 +128,8 @@ const WorkerPage = () => {
     return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount);
   };
 
-  const sumKg = workerData.reduce((sum, item) => sum + item.weight, 0) + (todayData?.weight || 0);
-  const totalPay = workerData.reduce((sum, item) => sum + item.payment, 0) + (todayData?.payment || 0);
+  const sumKg = workerData.reduce((sum, item) => sum + item.weight, 0);
+  const totalPay = workerData.reduce((sum, item) => sum + item.payment, 0);
 
   const openNoticeModal = (notice) => {
     setSelectedNotice(notice);
@@ -209,31 +209,53 @@ const WorkerPage = () => {
     };
 
     const subscribeUser = async () => {
-      if ('serviceWorker' in navigator) {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
         try {
-          const registration = await navigator.serviceWorker.register('/service-worker.js');
+          const registration = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
           console.log('Service Worker registration successful:', registration);
 
-          if (registration.active) {
-            const subscription = await registration.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
-            });
-            console.log('Push subscription successful:', subscription);
-            await axios.post('/subscribe', subscription);
-          } else {
-            console.error('Service Worker registration failed: No active service worker');
-          }
+          await navigator.serviceWorker.ready;
+
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+          });
+          console.log('Push subscription successful:', subscription);
+          await axios.post('/subscribe', subscription);
         } catch (error) {
-          console.error('Service Worker registration error:', error);
+          console.error('Service Worker 또는 Push 구독 오류:', error);
         }
       } else {
-        console.error('Service Worker not supported in this browser');
+        console.error('Service Worker 또는 Push 알림이 이 브라우저에서 지원되지 않습니다.');
       }
     };
 
     subscribeUser();
   }, []);
+
+  const sortedData = useMemo(() => {
+    let sortableItems = [...workerData];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [workerData, sortConfig]);
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   return (
     <div className="worker-container">
@@ -280,10 +302,6 @@ const WorkerPage = () => {
               <span className="stat-value">{todayData.weight.toFixed(2)} Kg</span>
             </div>
             <div className="stat-item">
-              <span className="stat-label">작업간</span>
-              <span className="stat-value">{todayData.workHours}</span>
-            </div>
-            <div className="stat-item">
               <span className="stat-label">도급비</span>
               <span className="stat-value">{formatCurrency(todayData.payment)}</span>
             </div>
@@ -305,18 +323,22 @@ const WorkerPage = () => {
           <table className="worker-table">
             <thead>
               <tr>
-                <th>날짜</th>
-                <th>중량(Kg)</th>
-                <th>작업시간</th>
-                <th>도급비용</th>
+                <th onClick={() => requestSort('date')}>
+                  날짜 {sortConfig.key === 'date' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                </th>
+                <th onClick={() => requestSort('weight')}>
+                  중량(Kg) {sortConfig.key === 'weight' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                </th>
+                <th onClick={() => requestSort('payment')}>
+                  도급비용 {sortConfig.key === 'payment' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {workerData.map((item, index) => (
+              {sortedData.map((item, index) => (
                 <tr key={`${item.date}-${index}`} className={index % 2 === 0 ? 'even-row' : 'odd-row'}>
                   <td>{new Date(item.date).toLocaleDateString()}</td>
                   <td>{item.weight.toFixed(2)}</td>
-                  <td>{item.workHours}</td>
                   <td>{formatCurrency(item.payment)}</td>
                 </tr>
               ))}

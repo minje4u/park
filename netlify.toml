@@ -17,7 +17,11 @@
   from = "/events"
   to = "/.netlify/functions/api/events"
   status = 200
-  force = true
+
+[[redirects]]
+  from = "/events"
+  to = "/.netlify/functions/api/events"
+  status = 200
 
 [[headers]]
   for = "/*"

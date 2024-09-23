@@ -257,3 +257,39 @@
     margin: 10px 0;
   }
 }
+
+.export-button {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.export-button:hover {
+  background-color: #45a049;
+}
+
+.total-row {
+  font-weight: bold;
+  background-color: #e8f5e9;
+}
+
+.total-label {
+  text-align: center;
+}
+
+.total-cell {
+  text-align: center;
+}
+
+.total-cell .weight {
+  font-size: 14px;
+}
+
+.total-cell .pay {
+  font-size: 14px;
+  color: #666;
+}
