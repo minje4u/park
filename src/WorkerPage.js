@@ -23,6 +23,8 @@ const WorkerPage = () => {
   const [lastMonthData, setLastMonthData] = useState(null);
   const [notification, setNotification] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  const [fortune, setFortune] = useState(null);
+  const [canCheckFortune, setCanCheckFortune] = useState(true);
 
   useEffect(() => {
     const eventSource = new EventSource('https://parkpa.netlify.app/.netlify/functions/api/events');
@@ -95,6 +97,42 @@ const WorkerPage = () => {
       setLastMonthData(null);
     }
   }, [groupNumber]);
+
+  const checkFortune = useCallback(async () => {
+    try {
+      const response = await axios.get(`/fortunes/today/${formattedGroupNumber}`);
+      if (response.data.canCheck) {
+        setFortune(response.data.fortune);
+        setCanCheckFortune(false);
+      } else {
+        setCanCheckFortune(false);
+      }
+    } catch (error) {
+      console.error('운세 확인 중 오류:', error);
+    }
+  }, [formattedGroupNumber]);
+
+  useEffect(() => {
+    const storedFortune = localStorage.getItem('fortune');
+    const lastCheckedDate = localStorage.getItem('lastCheckedDate');
+    const today = new Date().toDateString();
+
+    if (storedFortune && lastCheckedDate === today) {
+      setFortune(storedFortune);
+      setCanCheckFortune(false);
+    } else {
+      localStorage.removeItem('fortune');
+      localStorage.removeItem('lastCheckedDate');
+      setCanCheckFortune(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (fortune) {
+      localStorage.setItem('fortune', fortune);
+      localStorage.setItem('lastCheckedDate', new Date().toDateString());
+    }
+  }, [fortune]);
 
   useEffect(() => {
     if (formattedGroupNumber) {
@@ -289,7 +327,7 @@ const WorkerPage = () => {
           )}
         </div>
       </div>
-
+      
       <div className="today-data">
         <div className="today-header">
           <h3>오늘의 작업</h3>
@@ -390,6 +428,29 @@ const WorkerPage = () => {
           </div>
         </div>
       )}
+
+      <div className="fortune-section">
+        <h3>오늘의 운세</h3>
+        {fortune ? (
+          <p>{fortune}</p>
+        ) : canCheckFortune ? (
+          <button onClick={checkFortune}>운세 확인하기</button>
+        ) : (
+          <p>오늘의 운세를 이미 확인했습니다.</p>
+        )}
+      </div>
+
+      <div className="fortune-reset">
+        <button onClick={() => {
+          localStorage.removeItem('fortune');
+          localStorage.removeItem('lastCheckedDate');
+          setFortune(null);
+          setCanCheckFortune(true);
+          alert('운세가 초기화되었습니다.');
+        }}>
+          운세 초기화
+        </button>
+      </div>
     </div>
   );
 };

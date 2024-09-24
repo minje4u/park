@@ -109,7 +109,14 @@ const updateMissingGroupNumbers = async () => {
   }
 };
 
-// 로그인 라우트
+const AccessLog = mongoose.model('AccessLog', new mongoose.Schema({
+  groupNumber: String,
+  employeeName: String,
+  accessTime: { type: Date, default: Date.now },
+  ipAddress: String
+}));
+
+// 로그인 라우트 수정
 router.post('/login', async (req, res) => {
   try {
     await connectDB();
@@ -122,6 +129,15 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ error: '조판번호 또는 비밀번호가 올바르지 않습니다.' });
     }
+
+    // 접속 로그 저장
+    const accessLog = new AccessLog({
+      groupNumber: employee.groupNumber,
+      employeeName: employee.name,
+      ipAddress: req.ip
+    });
+    await accessLog.save();
+
     res.json({ 
       name: employee.name, 
       groupNumber: employee.groupNumber,
@@ -558,5 +574,91 @@ router.get('/events', (req, res) => {
   req.on('close', () => {
     clearInterval(pingInterval);
   });
+});
+
+// 접속 기록 조회 라우트
+router.get('/access-logs/:groupNumber', async (req, res) => {
+  try {
+    await connectDB();
+    const { groupNumber } = req.params;
+    const logs = await AccessLog.find({ groupNumber }).sort({ accessTime: -1 }).limit(50);
+    res.json(logs);
+  } catch (error) {
+    console.error('접속 기록 조회 중 오류:', error);
+    res.status(500).json({ error: '접속 기록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// Fortune 모델 추가
+const fortuneSchema = new mongoose.Schema({
+  content: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Fortune = mongoose.model('Fortune', fortuneSchema);
+
+// 사용자 운세 조회 기록 모델
+const fortuneLogSchema = new mongoose.Schema({
+  groupNumber: String,
+  lastCheckedAt: Date
+});
+
+const FortuneLog = mongoose.model('FortuneLog', fortuneLogSchema);
+
+// 운세 문구 등록 API
+router.post('/fortunes', async (req, res) => {
+  try {
+    const { content } = req.body;
+    const newFortune = new Fortune({ content });
+    await newFortune.save();
+    res.status(201).json({ message: '운세 문구가 등록되었습니다.', fortune: newFortune });
+  } catch (error) {
+    res.status(500).json({ error: '운세 문구 등록 중 오류가 발생했습니다.' });
+  }
+});
+
+// 운세 문구 조회 API
+router.get('/fortunes', async (req, res) => {
+  try {
+    const fortunes = await Fortune.find().sort({ createdAt: -1 });
+    res.json(fortunes);
+  } catch (error) {
+    res.status(500).json({ error: '운세 문구 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 오늘의 운세 조회 API
+router.get('/fortunes/today/:groupNumber', async (req, res) => {
+  try {
+    const { groupNumber } = req.params;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const log = await FortuneLog.findOne({ groupNumber });
+    
+    if (log && log.lastCheckedAt >= today) {
+      res.json({ message: '오늘 이미 운세를 확인했습니다.', canCheck: false });
+      return;
+    }
+
+    const count = await Fortune.countDocuments();
+    const random = Math.floor(Math.random() * count);
+    const fortune = await Fortune.findOne().skip(random);
+
+    if (!fortune) {
+      res.status(404).json({ error: '운세 문구가 없습니다.' });
+      return;
+    }
+
+    await FortuneLog.findOneAndUpdate(
+      { groupNumber },
+      { lastCheckedAt: new Date() },
+      { upsert: true }
+    );
+
+    res.json({ fortune: fortune.content, canCheck: true });
+  } catch (error) {
+    res.status(500).json({ error: '오늘의 운세 조회 중 오류가 발생했습니다.' });
+  }
 });
 

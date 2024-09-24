@@ -4,6 +4,7 @@ import EmployeeManagement from "./EmployeeManagement";
 import WorkStatistics from "./WorkStatistics";
 import "./AdminPage.css"; 
 import axios from 'axios';
+import FortuneManagement from "./FortuneManagement";
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? '/.netlify/functions/api'
@@ -19,6 +20,7 @@ const AdminPage = ({ username }) => {
   const [noticeTitle, setNoticeTitle] = useState("");
   const [noticeContent, setNoticeContent] = useState("");
   const [editingNoticeId, setEditingNoticeId] = useState(null);
+  const [fortunes, setFortunes] = useState([]);
 
   const fetchNotices = useCallback(async () => {
     try {
@@ -180,6 +182,15 @@ const AdminPage = ({ username }) => {
         >
           데이터베이스 초기화
         </button>
+        <button
+          className={`admin-tab-button ${activeTab === "운세관리" ? "active" : ""}`}
+          onClick={() => {
+            setActiveTab("운세관리");
+            closeMenu();
+          }}
+        >
+          운세관리
+        </button>
       </div>
 
       <div className="admin-content">
@@ -248,6 +259,9 @@ const AdminPage = ({ username }) => {
               )}
             </div>
           </div>
+        )}
+        {activeTab === "운세관리" && (
+          <FortuneManagement fortunes={fortunes} setFortunes={setFortunes} />
         )}
       </div>
     </div>

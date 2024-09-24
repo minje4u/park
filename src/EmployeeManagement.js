@@ -16,6 +16,8 @@ const EmployeeManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
   const [editingName, setEditingName] = useState(null);
+  const [showAccessLogs, setShowAccessLogs] = useState(false);
+  const [selectedEmployeeAccessLogs, setSelectedEmployeeAccessLogs] = useState([]);
 
   const fetchEmployees = useCallback(async () => {
     setIsLoading(true);
@@ -172,6 +174,17 @@ const EmployeeManagement = () => {
     };
   }, []);
 
+  const handleShowAccessLogs = async (groupNumber) => {
+    try {
+      const response = await axios.get(`/access-logs/${groupNumber}`);
+      setSelectedEmployeeAccessLogs(response.data);
+      setShowAccessLogs(true);
+    } catch (error) {
+      console.error('접속 기록 조회 중 오류:', error);
+      alert('접속 기록 조회에 실패했습니다.');
+    }
+  };
+
   return (
     <div className="employee-management-container">
       <div className="employee-header">
@@ -249,6 +262,12 @@ const EmployeeManagement = () => {
                     >
                       삭제
                     </button>
+                    <button 
+                      onClick={() => handleShowAccessLogs(employee.groupNumber)}
+                      className="employee-button access-logs"
+                    >
+                      접속 기록
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -258,10 +277,30 @@ const EmployeeManagement = () => {
           <p>등록된 작업자가 없습니다.</p>
         )}
       </div>
-      <div className="access-log-placeholder">
-        <h3>접속 기록</h3>
-        <p>이 기능은 추후 구현될 예정입니다.</p>
-      </div>
+      {showAccessLogs && (
+        <div className="modal-overlay" onClick={() => setShowAccessLogs(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>접속 기록</h3>
+            <table className="access-logs-table">
+              <thead>
+                <tr>
+                  <th>접속 시간</th>
+                  <th>IP 주소</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedEmployeeAccessLogs.map((log, index) => (
+                  <tr key={index}>
+                    <td>{new Date(log.accessTime).toLocaleString()}</td>
+                    <td>{log.ipAddress}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button onClick={() => setShowAccessLogs(false)}>닫기</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

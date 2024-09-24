@@ -36,6 +36,7 @@
     font-size: 14px;
     transition: background-color 0.3s;
     white-space: nowrap;
+    margin-right: 5px;
 }
 
 .employee-button:hover {
@@ -77,6 +78,7 @@
 .employee-table .button-cell {
     display: flex;
     gap: 5px;
+    white-space: nowrap;
 }
 
 .employee-list {
@@ -228,4 +230,31 @@
 .admin-cell {
     font-weight: bold;
     color: #ff0000;
+}
+
+.access-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.access-logs-table th,
+.access-logs-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.access-logs-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.employee-button.access-logs {
+    background-color: #4CAF50;
+    margin-left: 5px;
+}
+
+.employee-button.access-logs:hover {
+    background-color: #45a049;
 }

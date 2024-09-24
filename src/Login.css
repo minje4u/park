@@ -87,3 +87,27 @@
         padding: 10px;
     }
 }
+
+.remember-me-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    font-size: 0.9em;
+    color: #666;
+    white-space: nowrap;
+}
+
+.remember-me span {
+    margin-right: 5px;
+    user-select: none;
+}
+
+.remember-me input[type="checkbox"] {
+    margin: 0;
+}
