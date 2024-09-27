@@ -12,6 +12,13 @@ const webpush = require('web-push');
 const EventEmitter = require('events');
 const eventEmitter = new EventEmitter();
 
+const prizeSchema = new mongoose.Schema({
+  name: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Prize = mongoose.model('Prize', prizeSchema);
+
 const app = express();
 app.use(express.static('public'));
 const router = express.Router();
@@ -637,28 +644,97 @@ router.get('/fortunes/today/:groupNumber', async (req, res) => {
     const log = await FortuneLog.findOne({ groupNumber });
     
     if (log && log.lastCheckedAt >= today) {
-      res.json({ message: '오늘 이미 운세를 확인했습니다.', canCheck: false });
+      res.json({ message: '오늘 이미 운세를 확인했습니다.', canCheck: false, fortune: log.fortune });
       return;
     }
 
     const count = await Fortune.countDocuments();
-    const random = Math.floor(Math.random() * count);
-    const fortune = await Fortune.findOne().skip(random);
-
-    if (!fortune) {
+    if (count === 0) {
       res.status(404).json({ error: '운세 문구가 없습니다.' });
       return;
     }
 
+    const seed = parseInt(groupNumber) + today.getTime();
+    const random = Math.floor(Math.abs(Math.sin(seed) * count));
+    const fortune = await Fortune.findOne().skip(random);
+
     await FortuneLog.findOneAndUpdate(
       { groupNumber },
-      { lastCheckedAt: new Date() },
+      { lastCheckedAt: new Date(), fortune: fortune.content },
       { upsert: true }
     );
 
     res.json({ fortune: fortune.content, canCheck: true });
   } catch (error) {
+    console.error('오늘의 운세 조회 중 오류:', error);
     res.status(500).json({ error: '오늘의 운세 조회 중 오류가 발생했습니다.' });
   }
 });
+// 운세 파일 업로드 API
+router.post('/fortunes/upload', async (req, res) => {
+  try {
+    const { fortunes } = req.body;
 
+    if (!fortunes || !Array.isArray(fortunes)) {
+      return res.status(400).json({ error: '올바른 형식의 운세 데이터가 전송되지 않았습니다.' });
+    }
+
+    for (const content of fortunes) {
+      const newFortune = new Fortune({ content });
+      await newFortune.save();
+    }
+
+    res.status(201).json({ message: '운세가 성공적으로 업로드되었습니다.' });
+  } catch (error) {
+    console.error('운세 업로드 중 오류:', error);
+    res.status(500).json({ error: '운세 업로드 중 오류가 발생했습니다.' });
+  }
+});
+
+// 운세 삭제 API
+router.delete('/fortunes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Fortune.findByIdAndDelete(id);
+    res.json({ message: '운세가 성공적으로 삭제되었습니다.' });
+  } catch (error) {
+    console.error('운세 삭제 중 오류:', error);
+    res.status(500).json({ error: '운세 삭제 중 오류가 발생했습니다.' });
+  }
+});
+
+// 상품 목록 조회 API
+router.get('/prizes', async (req, res) => {
+  try {
+    const prizes = await Prize.find();
+    res.json(prizes);
+  } catch (error) {
+    console.error('상품 목록 조회 중 오류:', error);
+    res.status(500).json({ error: '상품 목록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 상품 추가 API
+router.post('/prizes', async (req, res) => {
+  try {
+    const { name } = req.body;
+    const newPrize = new Prize({ name });
+    await newPrize.save();
+    res.status(201).json(newPrize);
+  } catch (error) {
+    console.error('상품 추가 중 오류:', error);
+    res.status(500).json({ error: '상품 추가 중 오류가 발생했습니다.' });
+  }
+});
+
+// 상품 삭제 API
+router.delete('/prizes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Prize.findByIdAndDelete(id);
+    res.json({ message: '상품이 성공적으로 삭제되었습니다.' });
+  } catch (error) {
+    console.error('상품 삭제 중 오류:', error);
+    res.status(500).json({ error: '상품 삭제 중 오류가 발생했습니다.' });
+  }
+});

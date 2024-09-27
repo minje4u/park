@@ -1,8 +1,70 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import axios from 'axios';
 import "./WorkStatistics.css";
-import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
+import { exportToExcel } from './ExcelExport';
+import Modal from 'react-modal';
+
+Modal.setAppElement('#root');
+
+const ExportModal = ({ isOpen, onClose, onExport, availableYears }) => {
+  const [selectedFolder, setSelectedFolder] = useState('');
+  const [selectedYear, setSelectedYear] = useState(availableYears[0] || new Date().getFullYear());
+
+  useEffect(() => {
+    if (isOpen) {
+      const savedFolder = localStorage.getItem('lastExportFolder');
+      if (savedFolder) {
+        setSelectedFolder(savedFolder);
+      }
+    }
+  }, [isOpen]);
+
+  const handleFolderSelect = async () => {
+    try {
+      const handle = await window.showDirectoryPicker();
+      setSelectedFolder(handle.name);
+      localStorage.setItem('lastExportFolder', handle.name);
+    } catch (error) {
+      console.error('폴더 선택 중 오류 발생:', error);
+    }
+  };
+
+  const handleExport = () => {
+    onExport(selectedFolder, selectedYear);
+    onClose();
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onRequestClose={onClose}
+      contentLabel="엑셀 내보내기"
+      className="export-modal"
+      overlayClassName="export-modal-overlay"
+    >
+      <h2>엑셀 내보내기</h2>
+      <div className="form-group">
+        <label>저장 폴더:</label>
+        <div className="folder-select">
+          <input type="text" value={selectedFolder} readOnly />
+          <button onClick={handleFolderSelect}>폴더 선택</button>
+        </div>
+      </div>
+      <div className="form-group">
+        <label>년도 선택:</label>
+        <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}>
+          {availableYears.map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
+      </div>
+      <div className="modal-actions">
+        <button onClick={handleExport} disabled={!selectedFolder}>저장</button>
+        <button onClick={onClose}>취소</button>
+      </div>
+    </Modal>
+  );
+};
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? '/.netlify/functions/api'
@@ -48,6 +110,10 @@ const getDatesWithData = (workStatistics) => {
   return [...allDates].sort((a, b) => a - b);
 };
 
+const getAvailableYears = (data) => {
+  return [...new Set(Object.keys(data).map(yearMonth => yearMonth.split('-')[0]))].sort((a, b) => b - a);
+};
+
 const WorkStatistics = () => {
   const [workStatistics, setWorkStatistics] = useState({});
   const [datesWithData, setDatesWithData] = useState([]);
@@ -57,6 +123,41 @@ const WorkStatistics = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'groupNumber', direction: 'ascending' });
   const [editingName, setEditingName] = useState(null);
   const tableRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+  const tableContainerRef = useRef(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [availableYears, setAvailableYears] = useState([]);
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setStartX(e.pageX - tableContainerRef.current.offsetLeft);
+    setStartY(e.pageY - tableContainerRef.current.offsetTop);
+    setScrollLeft(tableContainerRef.current.scrollLeft);
+    setScrollTop(tableContainerRef.current.scrollTop);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - tableContainerRef.current.offsetLeft;
+    const y = e.pageY - tableContainerRef.current.offsetTop;
+    const walkX = (x - startX) * 1.5;
+    const walkY = (y - startY) * 1.5;
+    tableContainerRef.current.scrollLeft = scrollLeft - walkX;
+    tableContainerRef.current.scrollTop = scrollTop - walkY;
+  };
 
   const fetchWorkStatistics = useCallback(async () => {
     setIsLoading(true);
@@ -93,7 +194,7 @@ const WorkStatistics = () => {
 
   const handleDeleteDay = useCallback(async (day) => {
     if (window.confirm(`${selectedMonth.getFullYear()}년 ${selectedMonth.getMonth() + 1}월 ${day}일 데이터를 삭제하시겠습니까?`) &&
-        window.confirm("정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+        window.confirm("정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없니다.")) {
       try {
         const dateToDelete = new Date(Date.UTC(selectedMonth.getFullYear(), selectedMonth.getMonth(), day));
         const formattedDate = dateToDelete.toISOString().split('T')[0];
@@ -205,18 +306,14 @@ const WorkStatistics = () => {
         const firstColumn = table.querySelector('th:first-child');
         const secondColumn = table.querySelector('th:nth-child(2)');
         if (firstColumn && secondColumn) {
-          const firstColumnWidth = Math.max(firstColumn.offsetWidth, 60);
-          const secondColumnWidth = Math.max(secondColumn.offsetWidth, 120);
+          const firstColumnWidth = firstColumn.offsetWidth;
+          const secondColumnWidth = secondColumn.offsetWidth;
           
           document.documentElement.style.setProperty('--first-column-width', `${firstColumnWidth}px`);
           document.documentElement.style.setProperty('--second-column-width', `${secondColumnWidth}px`);
           
-          table.querySelectorAll('.fixed-column:nth-child(1)').forEach(el => {
-            el.style.width = `${firstColumnWidth}px`;
-          });
-          table.querySelectorAll('.fixed-column:nth-child(2)').forEach(el => {
-            el.style.width = `${secondColumnWidth}px`;
-          });
+          table.style.setProperty('--first-column-width', `${firstColumnWidth}px`);
+          table.style.setProperty('--second-column-width', `${secondColumnWidth}px`);
         }
       }
     };
@@ -274,135 +371,61 @@ const WorkStatistics = () => {
     setEditingName(groupNumber);
   };
 
+  useEffect(() => {
+    const adjustColumnWidths = () => {
+      const dateColumns = document.querySelectorAll('.admin-table .date-column');
+      dateColumns.forEach(column => {
+        column.style.width = '50px';
+        column.style.minWidth = '50px';
+        column.style.maxWidth = '50px';
+      });
+    };
 
-const exportToExcel = async () => {
-  const workbook = new ExcelJS.Workbook();
+    adjustColumnWidths();
+    window.addEventListener('resize', adjustColumnWidths);
 
-  // 데이터가 있는 월만 필터링
-  const monthsWithData = Array.from({ length: 12 }, (_, i) => i)
-    .filter(month => {
-      return Object.values(workStatistics).some(employee => 
-        Object.keys(employee.중량).some(day => {
-          const date = new Date(selectedMonth.getFullYear(), month, day);
-          return date.getMonth() === month;
-        })
+    return () => {
+      window.removeEventListener('resize', adjustColumnWidths);
+    };
+  }, [workStatistics]);
+
+  const handleExportModalOpen = () => setIsExportModalOpen(true);
+  const handleExportModalClose = () => setIsExportModalOpen(false);
+
+  const handleExport = async (selectedFolder, selectedYear) => {
+    try {
+      const response = await axios.get('/employee/work/all');
+      const allData = response.data;
+      console.log('All data received:', allData);
+      if (!allData || typeof allData !== 'object') {
+        throw new Error('Invalid data structure received from server');
+      }
+      // 선택된 연도의 데이터만 필터링
+      const yearData = Object.fromEntries(
+        Object.entries(allData).filter(([yearMonth]) => yearMonth.startsWith(selectedYear.toString()))
       );
-    });
+      await exportToExcel(yearData, new Date(selectedYear, 0, 1), datesWithData, `${selectedFolder}/${selectedYear}년_데이터`, true);
+      alert('엑셀 파일이 성공적으로 저장되었습니다.');
+    } catch (error) {
+      console.error('엑셀 파일 저장 중 오류 발생:', error);
+      alert('엑셀 파일 저장에 실패했습니다. 콘솔을 확인해주세요.');
+    }
+  };
 
-  // 데이터가 있는 월에 대해서만 시트 생성
-  monthsWithData.forEach(month => {
-    const worksheet = workbook.addWorksheet(`${month + 1}월`);
-
-    // 해당 년월 추가
-    const yearMonth = `${selectedMonth.getFullYear()}년 ${month + 1}월`;
-    worksheet.mergeCells('A1:E1');
-    const titleCell = worksheet.getCell('A1');
-    titleCell.value = yearMonth;
-    titleCell.font = { bold: true, size: 16 };
-    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-
-    // 헤더 추가
-    const headers = ['조판번호', '작업자명', ...datesWithData.map(day => `${day}일`), '중량합계', '도급'];
-    const headerRow = worksheet.addRow(headers);
-    headerRow.font = { bold: true };
-    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
-    headerRow.eachCell((cell) => {
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4CAF50' }
-      };
-      cell.font = { color: { argb: 'FFFFFFFF' } };
-    });
-
-    // 해당 월의 데이터만 필터링
-    const monthData = Object.entries(workStatistics).map(([groupNumber, data]) => {
-      const filteredWeights = Object.entries(data.중량).reduce((acc, [day, weight]) => {
-        const date = new Date(selectedMonth.getFullYear(), month, day);
-        if (date.getMonth() === month) {
-          acc[day] = weight;
-        }
-        return acc;
-      }, {});
-
-      return {
-        groupNumber,
-        name: data.employeeName,
-        중량: filteredWeights,
-        sum: Object.values(filteredWeights).reduce((sum, weight) => sum + weight, 0),
-        pay: Object.values(filteredWeights).reduce((sum, weight) => sum + weight * 270, 0)
-      };
-    }).filter(item => Object.keys(item.중량).length > 0);
-
-    // 데이터 추가
-    monthData.forEach((item, index) => {
-      const rowData = [
-        item.groupNumber,
-        item.name,
-        ...datesWithData.map(day => {
-          const date = new Date(selectedMonth.getFullYear(), month, day);
-          return (date.getMonth() === month && item.중량[day]) ? item.중량[day].toFixed(1) : '-';
-        }),
-        item.sum.toFixed(1) + ' kg',
-        new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(item.pay)
-      ];
-      const row = worksheet.addRow(rowData);
-      row.alignment = { horizontal: 'center', vertical: 'middle' };
-
-      // 3줄당 배경색 반전
-      if (index % 6 < 3) {
-        row.eachCell((cell) => {
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFF0F0F0' }
-          };
-        });
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        const response = await axios.get('/employee/work/all');
+        const allData = response.data;
+        const years = getAvailableYears(allData);
+        setAvailableYears(years);
+      } catch (error) {
+        console.error('데이터를 가져오는 중 오류 발생:', error);
       }
-    });
+    };
 
-    // 총합계 행 추가
-    const totalRow = worksheet.addRow(['총합계']);
-    worksheet.mergeCells(`A${worksheet.rowCount}:B${worksheet.rowCount}`);
-    totalRow.getCell(1).font = { bold: true };
-    totalRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-
-    // 일별 총합계
-    datesWithData.forEach((day, index) => {
-      const date = new Date(selectedMonth.getFullYear(), month, day);
-      if (date.getMonth() === month) {
-        const dailyTotal = monthData.reduce((sum, item) => sum + (item.중량[day] || 0), 0);
-        const dailyPay = monthData.reduce((sum, item) => sum + (item.중량[day] ? item.중량[day] * 270 : 0), 0);
-        totalRow.getCell(index + 3).value = `${dailyTotal.toFixed(1)}kg\n${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(dailyPay)}`;
-        totalRow.getCell(index + 3).alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
-      }
-    });
-
-    // 월별 총합계
-    const monthlyTotal = monthData.reduce((sum, item) => sum + item.sum, 0);
-    const monthlyPay = monthData.reduce((sum, item) => sum + item.pay, 0);
-    totalRow.getCell(datesWithData.length + 3).value = `${monthlyTotal.toFixed(1)} kg`;
-    totalRow.getCell(datesWithData.length + 4).value = `${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(monthlyPay)}`;
-    
-    // 총 중량합계와 총 도급비용 셀 정중앙 정렬
-    totalRow.getCell(datesWithData.length + 3).alignment = { horizontal: 'center', vertical: 'middle' };
-    totalRow.getCell(datesWithData.length + 4).alignment = { horizontal: 'center', vertical: 'middle' };
-
-    // 열 너비 자동 조정
-    worksheet.columns.forEach(column => {
-      column.width = 15;
-    });
-  });
-
-  // 현재 시간을 파일명에 포함
-  const now = new Date();
-  const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
-
-  // 파일 저장
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type: 'application/octet-stream' });
-  saveAs(blob, `${selectedMonth.getFullYear()}년_작업내역_${timestamp}.xlsx`);
-};
+    fetchAllData();
+  }, []);
 
   return (
     <div className="work-statistics">
@@ -453,22 +476,28 @@ const exportToExcel = async () => {
             className="search-input"
           />
         </div>
-        <button onClick={exportToExcel} className="export-button">엑셀로 저장</button>
+        <button onClick={handleExportModalOpen} className="export-button">엑셀로 저장</button>
       </div>
       {isLoading ? (
         <div className="loading">데이터를 불러오는 중...</div>
       ) : Object.keys(workStatistics).length === 0 ? (
         <p>데이터가 없습니다.</p>
       ) : (
-        <div className="table-container">
+        <div className="table-container" ref={tableContainerRef} onMouseDown={handleMouseDown} onMouseLeave={handleMouseLeave} onMouseUp={handleMouseUp} onMouseMove={handleMouseMove}>
           <table className="admin-table" ref={tableRef}>
             <thead>
               <tr>
-                <th className="id-column" onClick={() => handleSort('groupNumber')}>
-                  조판번호 {sortConfig.key === 'groupNumber' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                <th 
+                  className={`fixed-column id-column ${sortConfig.key === 'groupNumber' ? `sort-${sortConfig.direction}` : ''}`} 
+                  onClick={() => handleSort('groupNumber')}
+                >
+                  조판
                 </th>
-                <th className="name-column" onClick={() => handleSort('name')}>
-                  이름 {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                <th 
+                  className={`fixed-column name-column ${sortConfig.key === 'name' ? `sort-${sortConfig.direction}` : ''}`} 
+                  onClick={() => handleSort('name')}
+                >
+                  이름
                 </th>
                 {datesWithData.map((day) => (
                   <th key={day} className="date-column">
@@ -490,10 +519,10 @@ const exportToExcel = async () => {
               </tr>
             </thead>
             <tbody>
-              {sortedAndFilteredEmployees.map((item) => (
-                <tr key={item.groupNumber}>
-                  <td className="id-column">{item.groupNumber}</td>
-                  <td className="name-column">
+              {sortedAndFilteredEmployees.map((item, index) => (
+                <tr key={item.groupNumber} className={index % 4 < 2 ? 'even-row' : 'odd-row'}>
+                  <td className="fixed-column id-column">{item.groupNumber}</td>
+                  <td className="fixed-column name-column">
                     {editingName === item.groupNumber ? (
                       <input
                         type="text"
@@ -510,7 +539,7 @@ const exportToExcel = async () => {
                     )}
                   </td>
                   {datesWithData.map((day) => (
-                    <td key={day} className="data-cell">
+                    <td key={day} className="date-column data-cell">
                       <div className="weight">{item.중량 && item.중량[day] ? item.중량[day].toFixed(1) : "-"}</div>
                       <div className="work-hours">{item.작업시간 && item.작업시간[day] ? item.작업시간[day] : "-"}</div>
                     </td>
@@ -520,28 +549,38 @@ const exportToExcel = async () => {
                 </tr>
               ))}
               <tr className="total-row">
-                <td colSpan="2" className="total-label">일별 합계</td>
+                <td className="fixed-column id-column"></td>
+                <td className="fixed-column name-column">합계</td>
                 {datesWithData.map((day) => {
                   const dailyTotal = sortedAndFilteredEmployees.reduce((sum, item) => sum + (item.중량[day] || 0), 0);
                   const dailyPay = sortedAndFilteredEmployees.reduce((sum, item) => sum + (item.중량[day] ? item.중량[day] * 270 : 0), 0);
                   return (
-                    <td key={day} className="total-cell">
+                    <td key={day} className="date-column total-cell">
                       <div className="weight">{dailyTotal.toFixed(1)} kg</div>
                       <div className="pay">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(dailyPay)}</div>
                     </td>
                   );
                 })}
-                <td className="total-cell">
+                <td className="sum-cell total-cell">
                   <div className="weight">{monthStats.totalWeight.toFixed(1)} kg</div>
                 </td>
-                <td className="total-cell">
+                <td className="pay-cell total-cell">
                   <div className="pay">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(monthStats.totalPay)}</div>
                 </td>
               </tr>
             </tbody>
+            <tfoot>
+              {/* 기존 tfoot 내용 유지 */}
+            </tfoot>
           </table>
         </div>
       )}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={handleExportModalClose}
+        onExport={handleExport}
+        availableYears={availableYears}
+      />
     </div>
   );
 };

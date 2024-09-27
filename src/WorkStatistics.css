@@ -43,78 +43,91 @@
 }
 
 .table-container {
+  overflow-x: auto;
+  position: relative;
   overflow: auto;
+  max-height: calc(100vh - 200px);
   max-width: 100%;
-  max-height: 70vh;
+  margin-top: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: grab;
+  user-select: none;
 }
 
 .admin-table {
-  width: auto;
-  min-width: 100%;
-  border-collapse: collapse;
-  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
 }
 
-.admin-table .id-column,
-.admin-table .name-column {
-  white-space: nowrap;
-  width: 0.5%;  /* 1%에서 0.5%로 변경 */
-  max-width: 100px;  /* 최대 너비 설정 */
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.admin-table .name-column {
-  text-align: left;
-  padding-left: 5px;  /* 10px에서 5px로 변경 */
-  padding-right: 5px;  /* 10px에서 5px로 변경 */
-}
-
-.admin-table th,
-.admin-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: center;
+.admin-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #f2f2f2;
 }
 
 .admin-table th {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.admin-table tr:nth-child(even) {
-  background-color: #f9f9f9;
-}
-
-.admin-table tr:hover {
-  background-color: #f5f5f5;
-}
-
-.delete-day {
-  cursor: pointer;
-  margin-left: 5px;
-  font-size: 12px;
-  color: #ff6b6b;
-}
-
-.delete-day:hover {
-  color: #ff3e3e;
-}
-
-.weight {
-  font-weight: bold;
+  text-align: center;
+  padding: 8px 12px;
   font-size: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  background-color: #f2f2f2;
 }
 
-.work-hours {
-  font-size: 12px;
-  color: #666;
+.admin-table th:hover {
+  background-color: #e6e6e6;
 }
 
-.sum-cell, .pay-cell {
-  font-weight: bold;
-  font-size: 14px;
-  background-color: #e8f5e9;
+.admin-table th::after {
+  content: '\25B2';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.3;
+  font-size: 0.8em;
+}
+
+.admin-table th.sort-asc::after {
+  content: '\25B2';
+  opacity: 1;
+}
+
+.admin-table th.sort-desc::after {
+  content: '\25BC';
+  opacity: 1;
+}
+
+.admin-table .fixed-column,
+.admin-table .total-row .total-label {
+  position: sticky;
+  background-color: #f2f2f2;
+  z-index: 2;
+  left: 0;
+}
+
+.admin-table th:first-child,
+.admin-table td:first-child,
+.admin-table .total-row .total-label {
+  z-index: 3;
+}
+
+.admin-table th:nth-child(2),
+.admin-table td:nth-child(2) {
+  left: var(--first-column-width, 120px);
+  z-index: 3;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+.admin-table td {
+  text-align: center;
+  padding: 6px 10px;
+  vertical-align: middle;
 }
 
 .admin-table .id-column,
@@ -125,60 +138,115 @@
 }
 
 .admin-table .id-column {
-  min-width: 1%  /* ID 열의 최소 너비 설정 */
+  min-width: 50px;
+  width: 50px;
 }
 
 .admin-table .name-column {
   text-align: left;
-  padding-left: 5px;  /* 10px에서 5px로 변경 */
-  padding-right: 5px;  /* 10px에서 5px로 변경 */
-  min-width: 1%;  /* 이름 열의 최소 너비 설정 */
+  padding-left: 5px;
+  padding-right: 5px;
+  min-width: 1%;
 }
 
 .admin-table .sum-cell,
 .admin-table .pay-cell {
   text-align: right;
   padding-right: 10px;
-  min-width: 1%;  /* 합계와 도급 열의 최소 너비 설정 */
+  min-width: 1%;
 }
 
-@media (max-width: 768px) {
-  .controls-container {
-    flex-direction: column;
-  }
+.admin-table .date-column {
+  width: 90px !important;
+  min-width: 100% !important;
+  max-width: 90px !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
 
-  .date-picker-container,
-  .search-container {
-    width: 100%;
-    margin: 5px 0;
-  }
+.admin-table .date-column .delete-day {
+  font-size: 0.7em !important;
+  margin-left: 1px !important;
+}
 
-  .month-picker,
-  .search-input {
-    font-size: 14px;
-    padding: 8px;
-  }
+.admin-table .total-row {
+  background-color: #e8f5e9;
+  font-weight: bold;
+  height: 60px;
+  font-size: 14px; /* 합계 행의 기본 글자 크기 */
+  color: black; /* 기본 글자색을 검정으로 설정 */
+}
 
-  .admin-table {
-    font-size: 12px;
-  }
+.admin-table .total-row .date-column {
+  font-size: 12px; /* 날짜 열의 글자 크기 */
+}
 
-  .admin-table th,
-  .admin-table td {
-    padding: 6px;
-  }
+.admin-table .total-row .date-column .weight {
+  font-size: 11px; /* 중량 정보의 글자 크기를 작게 */
+  font-weight: normal; /* 굵기를 보통으로 */
+  color: #777; /* 글자색을 흐리게 */
+}
 
-  .weight {
-    font-size: 12px;
-  }
+.admin-table .total-row .date-column .pay {
+  font-size: 13px; /* 금액 정보의 글자 크기 */
+  font-weight: bold; /* 굵게 */
+  color: black; /* 글자색을 검정으로 */
+}
 
-  .work-hours {
-    font-size: 10px;
-  }
+.admin-table .total-row .sum-cell,
+.admin-table .total-row .pay-cell {
+  font-size: 15px; /* 합계와 도급 셀의 글자 크기 */
+  color: black; /* 글자색을 검정으로 */
+}
 
-  .sum-cell, .pay-cell {
-    font-size: 12px;
-  }
+.admin-table .total-row td {
+  border-top: 2px solid #ddd;
+  vertical-align: middle;
+}
+
+.admin-table .total-row .fixed-column {
+  position: sticky;
+  background-color: #e8f5e9;
+  z-index: 11;
+}
+
+.admin-table .total-row .id-column {
+  left: 0;
+}
+
+.admin-table .total-row .name-column {
+  left: var(--first-column-width, 50px);
+}
+
+.admin-table .total-row .total-cell {
+  text-align: center;
+}
+
+.admin-table .total-row .total-cell .weight,
+.admin-table .total-row .total-cell .pay {
+  white-space: nowrap;
+}
+
+.admin-table .total-row .total-cell .weight {
+  color: #2196F3;
+}
+
+.admin-table .total-row .total-cell .pay {
+  color: #4CAF50;
+}
+
+.delete-day {
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.3s;
+}
+
+.delete-day:hover {
+  opacity: 1;
 }
 
 .loading {
@@ -248,16 +316,6 @@
   color: #2196F3;
 }
 
-@media (max-width: 768px) {
-  .stats-summary {
-    flex-direction: column;
-  }
-
-  .stats-card {
-    margin: 10px 0;
-  }
-}
-
 .export-button {
   padding: 10px 20px;
   background-color: #4CAF50;
@@ -272,24 +330,202 @@
   background-color: #45a049;
 }
 
-.total-row {
+.admin-table .data-cell .weight {
+  font-size: 14px;
   font-weight: bold;
+  color: #333;
+}
+
+.admin-table .data-cell .work-hours {
+  font-size: 11px;
+  color: #777;
+  margin-top: 2px;
+}
+
+@media (max-width: 768px) {
+  .controls-container {
+    flex-direction: column;
+  }
+
+  .date-picker-container,
+  .search-container {
+    width: 100%;
+    margin: 5px 0;
+  }
+
+  .month-picker,
+  .search-input {
+    font-size: 14px;
+    padding: 8px;
+  }
+
+  .admin-table {
+    font-size: 12px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 6px 8px;
+  }
+
+  .admin-table .data-cell .weight {
+    font-size: 12px;
+  }
+
+  .admin-table .data-cell .work-hours {
+    font-size: 10px;
+  }
+
+  .sum-cell, .pay-cell {
+    font-size: 12px;
+  }
+
+  .stats-summary {
+    flex-direction: column;
+  }
+
+  .stats-card {
+    margin: 10px 0;
+  }
+}
+
+/* 중량합계와 도급 배경색 */
+.admin-table .sum-column,
+.admin-table .pay-column,
+.admin-table .sum-cell,
+.admin-table .pay-cell {
   background-color: #e8f5e9;
 }
 
-.total-label {
-  text-align: center;
+/* 조판 관련 테이블 라인 */
+.admin-table th:first-child,
+.admin-table td:first-child {
+  border-right: 2px solid #ddd;
 }
 
-.total-cell {
-  text-align: center;
+/* 이름 열 라인 */
+.admin-table th:nth-child(2),
+.admin-table td:nth-child(2) {
+  border-right: 2px solid #ddd;
 }
 
-.total-cell .weight {
-  font-size: 14px;
+/* 일별합계 행의 첫 번째 셀(라벨) 스타일 수정 */
+.admin-table .total-row td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 11;
+  background-color: #e8f5e9;
+  border-right: 2px solid #ddd;
 }
 
-.total-cell .pay {
-  font-size: 14px;
-  color: #666;
+/* 일별합계 행의 데이터 셀 스타일 */
+.admin-table .total-row td:not(:first-child) {
+  border-right: 1px solid #ddd;
+}
+
+/* 마지막 셀의 오른쪽 테두리 제거 */
+.admin-table .total-row td:last-child {
+  border-right: none;
+}
+
+/* 일별합계 행 전체에 상단 테두리 추가 */
+.admin-table .total-row {
+  border-top: 2px solid #ddd;
+}
+
+/* 기존 스타일 유지 */
+.admin-table .total-row {
+  background-color: #e8f5e9;
+}
+
+/* 조판 데이터마다 하단 라인 추가 */
+.admin-table tbody tr td {
+  border-bottom: 1px solid #ddd;
+}
+
+/* 마지막 데이터 행의 하단 라인을 더 굵게 */
+.admin-table tbody tr:last-child td {
+  border-bottom: 2px solid #ddd;
+}
+
+/* 총계 행의 상단 라인 유지 */
+.admin-table .total-row td {
+  border-top: 2px solid #ddd;
+}
+
+.admin-table .sum-cell {
+  width: 100px; /* 원하는 너비로 조정 */
+  min-width: 100px; /* 최소 너비도 같이 설정 */
+  max-width: 100px; /* 최대 너비도 같이 설정 */
+}
+
+.admin-table th.sum-column {
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+}
+
+.table-container:active {
+  cursor: grabbing;
+}
+
+/* 일별 데이터 열의 화살표 숨기기 */
+.admin-table th.date-column::after {
+  content: none;
+}
+
+.export-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 100%;
+  z-index: 1001; /* 높은 z-index 값 추가 */
+}
+
+.export-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* 오버레이의 z-index 값 추가 */
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.folder-select {
+  display: flex;
+  gap: 10px;
+}
+
+.folder-select input {
+  flex-grow: 1;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions button {
+  padding: 5px 15px;
 }

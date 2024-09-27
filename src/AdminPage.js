@@ -5,7 +5,7 @@ import WorkStatistics from "./WorkStatistics";
 import "./AdminPage.css"; 
 import axios from 'axios';
 import FortuneManagement from "./FortuneManagement";
-
+import PrizeManagement from "./PrizeManagement";
 const API_URL = process.env.NODE_ENV === 'production'
   ? '/.netlify/functions/api'
   : 'http://localhost:8888/.netlify/functions/api';
@@ -92,20 +92,6 @@ const AdminPage = ({ username }) => {
     }
   }, [editingNoticeId, noticeTitle, noticeContent, fetchNotices]);
 
-  const resetDatabase = useCallback(async () => {
-    if (window.confirm("정말로 데이터베이스를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
-      try {
-        const response = await axios.post(`${API_URL}/reset-database`);
-        console.log(response.data.message);
-        alert('데이터베이스가 초기화되었습니다. 페이지를 새로고침합니다.');
-        window.location.reload();
-      } catch (error) {
-        console.error('데이터베이스 초기화 중 오류:', error);
-        alert('데이터베이스 초기화에 실패했습니다.');
-      }
-    }
-  }, []);
-
   const handleWorkRegistration = useCallback(async (date, workData) => {
     try {
       const response = await axios.post('/employee/work', { date, workData });
@@ -174,15 +160,6 @@ const AdminPage = ({ username }) => {
           공지사항
         </button>
         <button
-          className="reset-button"
-          onClick={() => {
-            resetDatabase();
-            closeMenu();
-          }}
-        >
-          데이터베이스 초기화
-        </button>
-        <button
           className={`admin-tab-button ${activeTab === "운세관리" ? "active" : ""}`}
           onClick={() => {
             setActiveTab("운세관리");
@@ -190,6 +167,15 @@ const AdminPage = ({ username }) => {
           }}
         >
           운세관리
+        </button>
+        <button
+          className={`admin-tab-button ${activeTab === "사다리상품" ? "active" : ""}`}
+          onClick={() => {
+            setActiveTab("사다리상품");
+            closeMenu();
+          }}
+        >
+          사다리상품
         </button>
       </div>
 
@@ -262,6 +248,9 @@ const AdminPage = ({ username }) => {
         )}
         {activeTab === "운세관리" && (
           <FortuneManagement fortunes={fortunes} setFortunes={setFortunes} />
+        )}
+        {activeTab === "사다리상품" && (
+          <PrizeManagement />
         )}
       </div>
     </div>

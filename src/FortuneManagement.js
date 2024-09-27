@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const FortuneManagement = ({ fortunes, setFortunes }) => {
-  const [newFortune, setNewFortune] = useState('');
+  const [file, setFile] = useState(null);
 
   const fetchFortunes = useCallback(async () => {
     try {
@@ -17,14 +17,48 @@ const FortuneManagement = ({ fortunes, setFortunes }) => {
     fetchFortunes();
   }, [fetchFortunes]);
 
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!file) {
+      alert('파일을 선택해주세요.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target.result;
+      const fortunes = content.split('\n').filter(line => line.trim() !== '');
+
+      try {
+        await axios.post('/fortunes/upload', { fortunes }, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        setFile(null);
+        fetchFortunes();
+        alert('운세 파일이 성공적으로 업로드되었습니다.');
+      } catch (error) {
+        console.error('운세 파일 업로드 중 오류:', error);
+        alert('운세 파일 업로드에 실패했습니다.');
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleDelete = async (fortuneId) => {
     try {
-      await axios.post('/fortunes', { content: newFortune });
-      setNewFortune('');
+      await axios.delete(`/fortunes/${fortuneId}`);
       fetchFortunes();
+      alert('운세가 성공적으로 삭제되었습니다.');
     } catch (error) {
-      console.error('운세 문구 등록 중 오류:', error);
+      console.error('운세 삭제 중 오류:', error);
+      alert('운세 삭제에 실패했습니다.');
     }
   };
 
@@ -32,19 +66,21 @@ const FortuneManagement = ({ fortunes, setFortunes }) => {
     <div className="fortune-management">
       <h2>운세 관리</h2>
       <form onSubmit={handleSubmit}>
-        <textarea
-          value={newFortune}
-          onChange={(e) => setNewFortune(e.target.value)}
-          placeholder="새로운 운세 문구를 입력하세요"
-          required
+        <input
+          type="file"
+          onChange={handleFileChange}
+          accept=".txt"
         />
-        <button type="submit">등록</button>
+        <button type="submit">파일 업로드</button>
       </form>
       <div className="fortune-list">
-        <h3>등록된 운세 목록</h3>
+        <h3>등록된 운세 목록 (총 {fortunes.length}개)</h3>
         <ul>
           {fortunes.map((fortune) => (
-            <li key={fortune._id}>{fortune.content}</li>
+            <li key={fortune._id}>
+              {fortune.content}
+              <button onClick={() => handleDelete(fortune._id)}>삭제</button>
+            </li>
           ))}
         </ul>
       </div>

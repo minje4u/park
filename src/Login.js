@@ -61,14 +61,29 @@ const Login = ({ onLogin }) => {
       const response = await axios.post('/change-password', { groupNumber, newPassword });
       console.log('비밀번호 변경 응답:', response.data);
       if (response.data.message === "비밀번호가 성공적으로 변경되었습니다.") {
-        alert("비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해주세요.");
+        setErrorMessage("비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 다시 로그인해주세요.");
+        console.log('비밀번호 변경 성공');
+
+        // 로그인 상태 초기화
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('username');
+        localStorage.removeItem('groupNumber');
+        
+        // 비밀번호 변경 성공 후, 로그인 화면으로 리다이렉트
         setShowChangePassword(false);
         setPassword("");
         setNewPassword("");
         setConfirmPassword("");
-        navigate('/login');
+
+        // 2초 후 페이지 새로고침
+        setTimeout(() => {
+          console.log('페이지 새로고침');
+          window.location.reload();
+        }, 2000);
       } else {
         setErrorMessage(response.data.message || "비밀번호 변경에 실패했습니다.");
+        console.log('비밀번호 변경 실패:', response.data.message);
       }
     } catch (error) {
       console.error('비밀번호 변경 중 오류 발생:', error);
@@ -136,6 +151,7 @@ const Login = ({ onLogin }) => {
             <button type="submit">로그인</button>
           </form>
         )}
+        {errorMessage && <p className="confirmation-message">{errorMessage}</p>}
       </div>
     </div>
   );
