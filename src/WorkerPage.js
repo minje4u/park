@@ -100,15 +100,11 @@ const WorkerPage = () => {
 
   const checkFortune = useCallback(async () => {
     try {
-      const response = await axios.get(`/fortunes/today/${formattedGroupNumber}`);
-      if (response.data.canCheck) {
-        setFortune(response.data.fortune);
-        setCanCheckFortune(false);
-        localStorage.setItem(`fortune_${formattedGroupNumber}`, response.data.fortune);
-        localStorage.setItem(`lastCheckedDate_${formattedGroupNumber}`, new Date().toDateString());
-      } else {
-        setCanCheckFortune(false);
-      }
+      const response = await axios.get('/fortunes/random');
+      setFortune(response.data.content);
+      setCanCheckFortune(false);
+      localStorage.setItem(`fortune_${formattedGroupNumber}`, response.data.content);
+      localStorage.setItem(`lastCheckedDate_${formattedGroupNumber}`, new Date().toDateString());
     } catch (error) {
       console.error('운세 확인 중 오류 발생:', error);
     }

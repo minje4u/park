@@ -7,30 +7,10 @@ import Modal from 'react-modal';
 Modal.setAppElement('#root');
 
 const ExportModal = ({ isOpen, onClose, onExport, availableYears }) => {
-  const [selectedFolder, setSelectedFolder] = useState('');
   const [selectedYear, setSelectedYear] = useState(availableYears[0] || new Date().getFullYear());
 
-  useEffect(() => {
-    if (isOpen) {
-      const savedFolder = localStorage.getItem('lastExportFolder');
-      if (savedFolder) {
-        setSelectedFolder(savedFolder);
-      }
-    }
-  }, [isOpen]);
-
-  const handleFolderSelect = async () => {
-    try {
-      const handle = await window.showDirectoryPicker();
-      setSelectedFolder(handle.name);
-      localStorage.setItem('lastExportFolder', handle.name);
-    } catch (error) {
-      console.error('폴더 선택 중 오류 발생:', error);
-    }
-  };
-
   const handleExport = () => {
-    onExport(selectedFolder, selectedYear);
+    onExport(selectedYear);
     onClose();
   };
 
@@ -44,22 +24,15 @@ const ExportModal = ({ isOpen, onClose, onExport, availableYears }) => {
     >
       <h2>엑셀 내보내기</h2>
       <div className="form-group">
-        <label>저장 폴더:</label>
-        <div className="folder-select">
-          <input type="text" value={selectedFolder} readOnly />
-          <button onClick={handleFolderSelect}>폴더 선택</button>
-        </div>
-      </div>
-      <div className="form-group">
         <label>년도 선택:</label>
         <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}>
           {availableYears.map(year => (
-            <option key={year} value={year}>{year}</option>
+            <option key={year} value={year}>{year}년</option>
           ))}
         </select>
       </div>
       <div className="modal-actions">
-        <button onClick={handleExport} disabled={!selectedFolder}>저장</button>
+        <button onClick={handleExport}>저장</button>
         <button onClick={onClose}>취소</button>
       </div>
     </Modal>
@@ -110,8 +83,14 @@ const getDatesWithData = (workStatistics) => {
   return [...allDates].sort((a, b) => a - b);
 };
 
-const getAvailableYears = (data) => {
-  return [...new Set(Object.keys(data).map(yearMonth => yearMonth.split('-')[0]))].sort((a, b) => b - a);
+const getAvailableYears = (years) => {
+  if (!Array.isArray(years)) {
+    console.error('Invalid years data:', years);
+    return [];
+  }
+  return years.map(year => parseInt(year))
+              .filter(year => !isNaN(year))
+              .sort((a, b) => b - a);
 };
 
 const WorkStatistics = () => {
@@ -167,7 +146,7 @@ const WorkStatistics = () => {
         params: {
           year: selectedMonth.getFullYear(),
           month: selectedMonth.getMonth() + 1,
-          groupNumber: '' // 빈 문자열로 설정하여 모든 작업자의 데이터를 가져옵니다.
+          groupNumber: '' // 빈 문자열로 설정하여 모든 작업자의 데이터를 ��져옵니다.
         }
       });
       console.log("서버 응답 데이터:", response.data);
@@ -392,38 +371,67 @@ const WorkStatistics = () => {
   const handleExportModalOpen = () => setIsExportModalOpen(true);
   const handleExportModalClose = () => setIsExportModalOpen(false);
 
-  const handleExport = async (selectedFolder, selectedYear) => {
+  const handleExport = async (selectedYear) => {
     try {
-      const response = await axios.get('/employee/work/all');
+      console.log('Requesting data for year:', selectedYear);
+      const response = await axios.get('/employee/work/all', {
+        params: { year: selectedYear }
+      });
       const allData = response.data;
-      console.log('All data received:', allData);
+      console.log('All data received:', JSON.stringify(allData, null, 2));
+      
+      // 데이터 유효성 검사 및 처리
       if (!allData || typeof allData !== 'object') {
-        throw new Error('Invalid data structure received from server');
+        throw new Error('서버에서 유효하지 않은 데이터 형식을 받았습니다.');
       }
-      // 선택된 연도의 데이터만 필터링
-      const yearData = Object.fromEntries(
-        Object.entries(allData).filter(([yearMonth]) => yearMonth.startsWith(selectedYear.toString()))
-      );
-      await exportToExcel(yearData, new Date(selectedYear, 0, 1), datesWithData, `${selectedFolder}/${selectedYear}년_데이터`, true);
+      
+      const processedData = {};
+      let hasData = false;
+      
+      for (const [yearMonth, monthData] of Object.entries(allData)) {
+        if (Array.isArray(monthData) && monthData.length > 0) {
+          processedData[yearMonth] = monthData;
+          hasData = true;
+        }
+      }
+      
+      if (!hasData) {
+        throw new Error('선택한 연도의 데이터가 없습니다.');
+      }
+      
+      // 여기서 datesWithData를 생성합니다. 전체 연도의 데이터를 기반으로 합니다.
+      const allDatesWithData = new Set();
+      Object.values(processedData).forEach(monthData => {
+        monthData.forEach(work => {
+          const day = new Date(work.date).getUTCDate();
+          allDatesWithData.add(day);
+        });
+      });
+      const sortedDatesWithData = Array.from(allDatesWithData).sort((a, b) => a - b);
+      
+      await exportToExcel(processedData, new Date(selectedYear, 0, 1), sortedDatesWithData, `${selectedYear}년_데이터`);
       alert('엑셀 파일이 성공적으로 저장되었습니다.');
     } catch (error) {
       console.error('엑셀 파일 저장 중 오류 발생:', error);
-      alert('엑셀 파일 저장에 실패했습니다. 콘솔을 확인해주세요.');
+      alert(`엑셀 파일 저장에 실패했습니다: ${error.message}`);
     }
   };
 
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        const response = await axios.get('/employee/work/all');
-        const allData = response.data;
-        const years = getAvailableYears(allData);
-        setAvailableYears(years);
+        const response = await axios.get('/employee/work/years');
+        const years = response.data;
+        console.log('Available years from server:', years);
+        const processedYears = getAvailableYears(years);
+        console.log('Processed available years:', processedYears);
+        setAvailableYears(processedYears);
       } catch (error) {
-        console.error('데이터를 가져오는 중 오류 발생:', error);
+        console.error('연도 데이터를 가져오는 중 오류 발생:', error);
+        setAvailableYears([]);
       }
     };
-
+  
     fetchAllData();
   }, []);
 

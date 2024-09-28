@@ -111,3 +111,9 @@
 .remember-me input[type="checkbox"] {
     margin: 0;
 }
+
+.success-message {
+    color: #27ae60;
+    margin-top: 10px;
+    font-size: 13px;
+}

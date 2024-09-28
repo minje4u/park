@@ -292,7 +292,7 @@ router.post('/change-password', async (req, res) => {
     employee.password = newPassword;
     employee.isInitialPassword = false;
     await employee.save();
-    res.json({ message: '비밀번호가 성공적으 변경되었습니다.' });
+    res.json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
   } catch (error) {
     console.error('비밀번호 변경 중 오류:', error);
     res.status(500).json({ error: '비밀번호 변경 중 오류가 발생했습니다.' });
@@ -736,5 +736,76 @@ router.delete('/prizes/:id', async (req, res) => {
   } catch (error) {
     console.error('상품 삭제 중 오류:', error);
     res.status(500).json({ error: '상품 삭제 중 오류가 발생했습니다.' });
+  }
+});
+
+// 사용 가능한 연도 목록 가져오기
+router.get('/employee/work/years', async (req, res) => {
+  try {
+    await connectDB();
+    const years = await Work.distinct('date', {}).then(dates => 
+      [...new Set(dates.map(date => new Date(date).getUTCFullYear()))]
+    );
+    res.json(years.sort((a, b) => b - a));
+  } catch (error) {
+    console.error('연도 목록 조회 중 오류:', error);
+    res.status(500).json({ error: '연도 목록을 가져오는 데 실패했습니다.' });
+  }
+});
+
+// 특정 연도의 모든 작업 데이터 가져오기
+router.get('/employee/work/all', async (req, res) => {
+  try {
+    await connectDB();
+    const { year } = req.query;
+    console.log('Requested year:', year);
+    const startDate = new Date(year, 0, 1);
+    const endDate = new Date(parseInt(year) + 1, 0, 1);
+    console.log('Start date:', startDate, 'End date:', endDate);
+
+    const works = await Work.find({
+      date: { $gte: startDate, $lt: endDate }
+    }).sort({ date: 1 });
+    console.log('Number of works found:', works.length);
+
+    const formattedData = works.reduce((acc, work) => {
+      const monthKey = `${work.date.getUTCFullYear()}-${(work.date.getUTCMonth() + 1).toString().padStart(2, '0')}`;
+      if (!acc[monthKey]) {
+        acc[monthKey] = [];
+      }
+      acc[monthKey].push({
+        groupNumber: work.groupNumber,
+        employeeName: work.employeeName,
+        date: work.date,
+        weight: work.weight,
+        workHours: work.workHours
+      });
+      return acc;
+    }, {});
+
+    console.log('Formatted data:', JSON.stringify(formattedData, null, 2));
+    res.json(formattedData);
+  } catch (error) {
+    console.error('작업 데이터 조회 중 오류:', error);
+    res.status(500).json({ error: '작업 데이터를 가져오는 데 실패했습니다.' });
+  }
+});
+
+// 랜덤 운세 제공 엔드포인트 추가
+router.get('/fortunes/random', async (req, res) => {
+  try {
+    await connectDB();
+    const count = await Fortune.countDocuments();
+    const random = Math.floor(Math.random() * count);
+    const fortune = await Fortune.findOne().skip(random);
+    
+    if (!fortune) {
+      return res.status(404).json({ error: '운세를 찾을 수 없습니다.' });
+    }
+    
+    res.json({ content: fortune.content });
+  } catch (error) {
+    console.error('랜덤 운세 조회 중 오류:', error);
+    res.status(500).json({ error: '운세를 가져오는데 실패했습니다.' });
   }
 });
