@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from 'axios';
 import "./EmployeeManagement.css";
+import PointHistoryModal from './PointHistoryModal'; // 이 컴포넌트는 나중에 만들 예정입니다.
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? '/.netlify/functions/api'
@@ -23,6 +24,9 @@ const EmployeeManagement = () => {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedEmployeePurchases, setSelectedEmployeePurchases] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [editingScore, setEditingScore] = useState(null);
+  const [showPointHistoryModal, setShowPointHistoryModal] = useState(false);
+  const [selectedEmployeeForPointHistory, setSelectedEmployeeForPointHistory] = useState(null);
 
   const fetchEmployees = useCallback(async () => {
     setIsLoading(true);
@@ -176,6 +180,54 @@ const EmployeeManagement = () => {
     }
   };
 
+  const handleScoreDoubleClick = (groupNumber) => {
+    setEditingScore(groupNumber);
+  };
+
+  const handleScoreEdit = (groupNumber, newScore) => {
+    setAccumulatedScores(prevScores => ({
+      ...prevScores,
+      [groupNumber]: newScore === '' ? '' : parseInt(newScore, 10) || 0
+    }));
+  };
+
+  const handleScoreSave = async (groupNumber) => {
+    try {
+      const newScore = accumulatedScores[groupNumber];
+      const scoreToSave = newScore === '' ? 0 : parseInt(newScore, 10);
+      const oldScore = parseInt(employees.find(emp => emp.groupNumber === groupNumber).accumulatedScore, 10) || 0;
+      const changeAmount = scoreToSave - oldScore;
+
+      const response = await axios.put(`/accumulated-score/${groupNumber}`, { score: scoreToSave });
+      if (response.data.success) {
+        // 포인트 변동 내역 저장
+        await axios.post('/point-history', {
+          groupNumber,
+          changeAmount,
+          reason: '관리자변경',
+          details: `${oldScore} → ${scoreToSave}`
+        });
+
+        setEditingScore(null);
+        setAccumulatedScores(prevScores => ({
+          ...prevScores,
+          [groupNumber]: scoreToSave
+        }));
+      } else {
+        throw new Error(response.data.message || '점수 수정을 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('점수 수정 중 오류:', error);
+      alert(error.message || '점수 수정에 실패했습니다.');
+    }
+  };
+
+  const handleScoreInputKeyPress = (event, groupNumber) => {
+    if (event.key === 'Enter') {
+      handleScoreSave(groupNumber);
+    }
+  };
+
   const sortedEmployees = useMemo(() => {
     let sortableItems = employees.map(employee => ({
       ...employee,
@@ -259,6 +311,11 @@ const EmployeeManagement = () => {
     console.log('accumulatedScores 업데이트됨:', accumulatedScores);
   }, [accumulatedScores]);
 
+  const handleShowPointHistory = (employee) => {
+    setSelectedEmployeeForPointHistory(employee);
+    setShowPointHistoryModal(true);
+  };
+
   return (
     <div className="employee-management-container">
       <div className="employee-header">
@@ -332,8 +389,22 @@ const EmployeeManagement = () => {
                     )}
                   </td>
                   <td className={employee.role === 'admin' ? 'admin-cell' : ''}>{employee.role === 'admin' ? '관리자' : '작업자'}</td>
-                  <td className={employee.role === 'admin' ? 'admin-cell' : ''}>
-                    {accumulatedScores[employee.groupNumber] || 0}
+                  <td className={`score-cell ${employee.role === 'admin' ? 'admin-cell' : ''}`}>
+                    {editingScore === employee.groupNumber ? (
+                      <input
+                        type="number"
+                        className="score-input"
+                        value={accumulatedScores[employee.groupNumber] ?? ''}
+                        onChange={(e) => handleScoreEdit(employee.groupNumber, e.target.value)}
+                        onKeyPress={(e) => handleScoreInputKeyPress(e, employee.groupNumber)}
+                        onBlur={() => handleScoreSave(employee.groupNumber)}
+                        autoFocus
+                      />
+                    ) : (
+                      <span onDoubleClick={() => handleScoreDoubleClick(employee.groupNumber)}>
+                        {accumulatedScores[employee.groupNumber] ?? 0}
+                      </span>
+                    )}
                   </td>
                   <td className="button-cell">
                     <button 
@@ -347,6 +418,12 @@ const EmployeeManagement = () => {
                       className="employee-button access-logs"
                     >
                       접속 기록
+                    </button>
+                    <button 
+                      onClick={() => handleShowPointHistory(employee)}
+                      className="employee-button point-history"
+                    >
+                      포인트 내역
                     </button>
                     {purchaseHistory[employee.groupNumber] && purchaseHistory[employee.groupNumber].length > 0 && (
                       <button 
@@ -461,6 +538,12 @@ const EmployeeManagement = () => {
             </div>
           </div>
         </div>
+      )}
+      {showPointHistoryModal && selectedEmployeeForPointHistory && (
+        <PointHistoryModal
+          employee={selectedEmployeeForPointHistory}
+          onClose={() => setShowPointHistoryModal(false)}
+        />
       )}
     </div>
   );

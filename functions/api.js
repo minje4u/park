@@ -18,6 +18,7 @@ const eventEmitter = new EventEmitter();
 const LuckyShopItem = require('./models/LuckyShopItem');
 const LuckyShopPurchase = require('./models/LuckyShopPurchase');
 const FortuneLog = require('./models/fortuneLog');
+const PointHistory = require('./models/pointHistory');
 
 const prizeSchema = new mongoose.Schema({
   name: String,
@@ -660,7 +661,7 @@ router.get('/fortunelogs/:groupNumber', async (req, res) => {
   }
 });
 
-// 운세 파일 업로드 API
+// 운세 문구 업로드 API
 router.post('/fortunes/upload', async (req, res) => {
   try {
     const { fortunes } = req.body;
@@ -862,6 +863,7 @@ router.post('/lucky-shop-purchase/:id', async (req, res) => {
       return res.status(400).json({ error: '누적 점수가 부족합니다.' });
     }
 
+    const oldScore = fortuneLog.accumulatedScore;
     fortuneLog.accumulatedScore -= item.points;
     await fortuneLog.save();
 
@@ -870,6 +872,14 @@ router.post('/lucky-shop-purchase/:id', async (req, res) => {
       itemName: item.name
     });
     await newPurchase.save();
+
+    // 포인트 변동 내역 저장
+    await PointHistory.create({
+      groupNumber,
+      changeAmount: -item.points,
+      reason: '행운상점구매',
+      details: `${item.name} 구매 (${oldScore} → ${fortuneLog.accumulatedScore})`
+    });
 
     res.json({ message: '구매가 완료되었습니다.', newScore: fortuneLog.accumulatedScore });
   } catch (error) {
@@ -912,12 +922,13 @@ router.post('/fortunelogs/use', async (req, res) => {
     }
 
     const luckyScore = generateLuckyScore();
-
     let fortuneLog = await FortuneLog.findOne({ groupNumber });
+    
     if (!fortuneLog) {
       fortuneLog = new FortuneLog({ groupNumber, accumulatedScore: 0 });
     }
     
+    const previousScore = fortuneLog.accumulatedScore;
     fortuneLog.accumulatedScore += luckyScore;
     fortuneLog.fortune = fortuneDoc.content;
     fortuneLog.luckyScore = luckyScore;
@@ -926,6 +937,14 @@ router.post('/fortunelogs/use', async (req, res) => {
     await fortuneLog.save();
 
     console.log(`${groupNumber}의 누적 점수 업데이트:`, fortuneLog.accumulatedScore);
+
+    // 포인트 변동 내역 저장
+    await PointHistory.create({
+      groupNumber,
+      changeAmount: luckyScore,
+      reason: '운세확인획득',
+      details: `운세 확인으로 ${luckyScore} 포인트 획득 (${previousScore} → ${fortuneLog.accumulatedScore})`
+    });
 
     res.json({
       content: fortuneDoc.content,
@@ -1033,5 +1052,70 @@ router.post('/lucky-shop-items', async (req, res) => {
   } catch (error) {
     console.error('상품 추가 중 오류:', error);
     res.status(500).json({ error: '상품 추가 중 오류가 발생했습니다.' });
+  }
+});
+
+// 누적 점수 수정 라우트
+router.put('/accumulated-score/:groupNumber', async (req, res) => {
+  try {
+    const { groupNumber } = req.params;
+    const { score } = req.body;
+    
+    const fortuneLog = await FortuneLog.findOne({ groupNumber });
+    if (!fortuneLog) {
+      return res.status(404).json({ error: '해당 작업자의 기록을 찾을 수 없습니다.' });
+    }
+
+    const oldScore = fortuneLog.accumulatedScore;
+    
+    // 점수 변경 및 저장
+    fortuneLog.accumulatedScore = score;
+    await fortuneLog.save();
+
+    // 포인트 변동 내역 저장 (관리자 변경으로만 기록)
+    await PointHistory.create({
+      groupNumber,
+      changeAmount: score - oldScore,
+      reason: '관리자변경',
+      details: `관리자에 의한 점수 변경 (${oldScore} → ${score})`
+    });
+
+    res.json({ success: true, message: '누적 점수가 성공적으로 수정되었습니다.' });
+  } catch (error) {
+    console.error('누적 점수 수정 중 오류:', error);
+    res.status(500).json({ error: '누적 점수 수정 중 오류가 발생했습니다.' });
+  }
+});
+
+// 포인트 변동 내역 저장 엔드포인트
+router.post('/point-history', async (req, res) => {
+  try {
+    const { groupNumber, changeAmount, reason, details } = req.body;
+
+    const newPointHistory = new PointHistory({
+      groupNumber,
+      changeAmount,
+      reason,
+      details
+    });
+
+    await newPointHistory.save();
+
+    res.status(201).json({ message: '포인트 변동 내역이 저장되었습니다.', pointHistory: newPointHistory });
+  } catch (error) {
+    console.error('포인트 변동 내역 저장 중 오류:', error);
+    res.status(500).json({ error: '포인트 변동 내역 저장 중 오류가 발생했습니다.' });
+  }
+});
+
+// 포인트 변동 내역 조회 엔드포인트
+router.get('/point-history/:groupNumber', async (req, res) => {
+  try {
+    const { groupNumber } = req.params;
+    const pointHistory = await PointHistory.find({ groupNumber }).sort({ timestamp: -1 });
+    res.json(pointHistory);
+  } catch (error) {
+    console.error('포인트 변동 내역 조회 중 오류:', error);
+    res.status(500).json({ error: '포인트 변동 내역 조회 중 오류가 발생했습니다.' });
   }
 });

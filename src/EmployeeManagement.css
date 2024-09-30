@@ -478,3 +478,26 @@
 .purchase-history-section:last-of-type {
     margin-bottom: 0;
 }
+
+.score-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: inherit;
+  padding: 0;
+  margin: 0;
+  appearance: textfield;
+}
+
+.score-input::-webkit-outer-spin-button,
+.score-input::-webkit-inner-spin-button,
+.score-input {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.score-cell {
+  text-align: left;
+  padding-left: 10px;
+}
