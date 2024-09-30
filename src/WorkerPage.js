@@ -160,6 +160,13 @@ const WorkerPage = () => {
     checkFortuneAvailability();
   }, [lastFortuneDate]);
 
+  useEffect(() => {
+    const storedLastFortuneDate = localStorage.getItem('lastFortuneDate');
+    if (storedLastFortuneDate) {
+      setLastFortuneDate(storedLastFortuneDate);
+    }
+  }, []);
+
   const handleFortuneRefresh = async () => {
     if (!canViewFortune) {
       alert('오늘은 이미 운세를 확인하셨습니다. 내일 다시 시도해주세요.');
@@ -174,7 +181,9 @@ const WorkerPage = () => {
         setFortune(response.data.content);
         setLuckyScore(response.data.luckyScore);
         setAccumulatedScore(response.data.accumulatedScore);
-        setLastFortuneDate(new Date().toISOString());
+        const now = new Date().toISOString();
+        setLastFortuneDate(now);
+        localStorage.setItem('lastFortuneDate', now);
       } else {
         throw new Error('Invalid response data');
       }
@@ -184,6 +193,19 @@ const WorkerPage = () => {
       setCanViewFortune(true); // 오류 발생 시 버튼을 다시 활성화
     }
   };
+
+  useEffect(() => {
+    const fetchFortuneAvailability = async () => {
+      try {
+        const response = await axios.get(`/fortunelogs/availability/${groupNumber}`);
+        setCanViewFortune(response.data.canViewFortune);
+      } catch (error) {
+        console.error('운세 확인 가능 여부 조회 중 오류:', error);
+      }
+    };
+
+    fetchFortuneAvailability();
+  }, [groupNumber]);
 
   useEffect(() => {
     if (formattedGroupNumber) {

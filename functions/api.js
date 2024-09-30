@@ -928,6 +928,13 @@ router.post('/fortunelogs/use', async (req, res) => {
       fortuneLog = new FortuneLog({ groupNumber, accumulatedScore: 0 });
     }
     
+    const today = moment().tz("Asia/Seoul").startOf('day').toDate();
+    today.setHours(0, 0, 0, 0);
+
+    if (fortuneLog.lastCheckedAt && fortuneLog.lastCheckedAt >= today) {
+      return res.status(400).json({ error: '오늘은 이미 운세를 확인하셨습니다.' });
+    }
+
     const previousScore = fortuneLog.accumulatedScore;
     fortuneLog.accumulatedScore += luckyScore;
     fortuneLog.fortune = fortuneDoc.content;
