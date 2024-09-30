@@ -10,6 +10,6 @@ const WorkSchema = new mongoose.Schema({
   totalWeight: { type: Number },
   payment: { type: Number, required: true },
   groupNumber: { type: String, required: true }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('work', WorkSchema, 'works');

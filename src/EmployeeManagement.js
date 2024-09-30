@@ -10,6 +10,7 @@ axios.defaults.baseURL = API_URL;
 
 const EmployeeManagement = () => {
   const [employees, setEmployees] = useState([]);
+  const [accumulatedScores, setAccumulatedScores] = useState({});
   const [newEmployeeName, setNewEmployeeName] = useState("");
   const [newGroupNumber, setNewGroupNumber] = useState("");
   const [newEmployeeRole, setNewEmployeeRole] = useState("worker");
@@ -18,6 +19,10 @@ const EmployeeManagement = () => {
   const [editingName, setEditingName] = useState(null);
   const [showAccessLogs, setShowAccessLogs] = useState(false);
   const [selectedEmployeeAccessLogs, setSelectedEmployeeAccessLogs] = useState([]);
+  const [purchaseHistory, setPurchaseHistory] = useState({});
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [selectedEmployeePurchases, setSelectedEmployeePurchases] = useState([]);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   const fetchEmployees = useCallback(async () => {
     setIsLoading(true);
@@ -37,9 +42,39 @@ const EmployeeManagement = () => {
     }
   }, []);
 
+  const fetchAccumulatedScores = useCallback(async () => {
+    try {
+      const response = await axios.get('/accumulated-scores');
+      console.log('Fetched accumulated scores:', response.data); // 로깅 추가
+      setAccumulatedScores(response.data);
+    } catch (error) {
+      console.error('누적 점수를 가져오는 데 실패했습니다:', error.response ? error.response.data : error.message);
+    }
+  }, []);
+
+  const fetchPurchaseHistory = useCallback(async () => {
+    try {
+      const response = await axios.get('/lucky-shop-purchases');
+      console.log('서버에서 받은 구매 내역:', response.data);
+      const history = response.data.reduce((acc, purchase) => {
+        if (!acc[purchase.groupNumber]) {
+          acc[purchase.groupNumber] = [];
+        }
+        acc[purchase.groupNumber].push(purchase);
+        return acc;
+      }, {});
+      console.log('정리된 구매 내역:', history);
+      setPurchaseHistory(history);
+    } catch (error) {
+      console.error('구매 내역 조회 중 오류:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchEmployees();
-  }, [fetchEmployees]);
+    fetchAccumulatedScores();
+    fetchPurchaseHistory();
+  }, [fetchEmployees, fetchAccumulatedScores, fetchPurchaseHistory]);
 
   const addEmployee = async () => {
     if (newEmployeeName === "" || newGroupNumber === "") {
@@ -142,7 +177,20 @@ const EmployeeManagement = () => {
   };
 
   const sortedEmployees = useMemo(() => {
-    let sortableItems = [...employees];
+    let sortableItems = employees.map(employee => ({
+      ...employee,
+      accumulatedScore: accumulatedScores[employee.groupNumber] || 0,
+      hasUndeliveredPurchase: purchaseHistory[employee.groupNumber]?.some(p => !p.isDelivered) || false
+    }));
+    
+    // 미지급 구매내역이 있는 작업자를 상단으로 정렬
+    sortableItems.sort((a, b) => {
+      if (a.hasUndeliveredPurchase && !b.hasUndeliveredPurchase) return -1;
+      if (!a.hasUndeliveredPurchase && b.hasUndeliveredPurchase) return 1;
+      return 0;
+    });
+    
+    // 기존 정렬 로직 적용
     if (sortConfig.key !== null) {
       sortableItems.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) {
@@ -155,7 +203,7 @@ const EmployeeManagement = () => {
       });
     }
     return sortableItems;
-  }, [employees, sortConfig]);
+  }, [employees, accumulatedScores, sortConfig, purchaseHistory]);
 
   useEffect(() => {
     const handleEmployeeNameUpdate = (event) => {
@@ -184,6 +232,32 @@ const EmployeeManagement = () => {
       alert('접속 기록 조회에 실패했습니다.');
     }
   };
+
+  const handleShowPurchaseHistory = (groupNumber) => {
+    const employee = employees.find(emp => emp.groupNumber === groupNumber);
+    setSelectedEmployee(employee);
+    setSelectedEmployeePurchases(purchaseHistory[groupNumber] || []);
+    setShowPurchaseModal(true);
+  };
+
+  const handleCompletePurchase = async (purchaseId) => {
+    try {
+      await axios.post(`/lucky-shop-purchase-complete/${purchaseId}`);
+      fetchPurchaseHistory();
+      setSelectedEmployeePurchases(prevPurchases => 
+        prevPurchases.map(purchase => 
+          purchase._id === purchaseId ? {...purchase, isDelivered: true, deliveryDate: new Date()} : purchase
+        )
+      );
+    } catch (error) {
+      console.error('구매 완료 처리 중 오류:', error);
+      alert('구매 완료 처리에 실패했습니다.');
+    }
+  };
+
+  useEffect(() => {
+    console.log('accumulatedScores 업데이트됨:', accumulatedScores);
+  }, [accumulatedScores]);
 
   return (
     <div className="employee-management-container">
@@ -231,6 +305,9 @@ const EmployeeManagement = () => {
                 <th onClick={() => handleSort('role')}>
                   역할 {sortConfig.key === 'role' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
                 </th>
+                <th onClick={() => handleSort('accumulatedScore')}>
+                  누적 점수 {sortConfig.key === 'accumulatedScore' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
                 <th>작업</th>
               </tr>
             </thead>
@@ -255,6 +332,9 @@ const EmployeeManagement = () => {
                     )}
                   </td>
                   <td className={employee.role === 'admin' ? 'admin-cell' : ''}>{employee.role === 'admin' ? '관리자' : '작업자'}</td>
+                  <td className={employee.role === 'admin' ? 'admin-cell' : ''}>
+                    {accumulatedScores[employee.groupNumber] || 0}
+                  </td>
                   <td className="button-cell">
                     <button 
                       onClick={() => handleDeleteEmployee(employee.groupNumber, employee.name)}
@@ -268,6 +348,14 @@ const EmployeeManagement = () => {
                     >
                       접속 기록
                     </button>
+                    {purchaseHistory[employee.groupNumber] && purchaseHistory[employee.groupNumber].length > 0 && (
+                      <button 
+                        onClick={() => handleShowPurchaseHistory(employee.groupNumber)}
+                        className={`employee-button purchase-history ${purchaseHistory[employee.groupNumber].some(p => !p.isDelivered) ? 'blink' : ''}`}
+                      >
+                        {purchaseHistory[employee.groupNumber].some(p => !p.isDelivered) ? '미지급 구입내역!' : '구입내역'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -298,6 +386,79 @@ const EmployeeManagement = () => {
               </tbody>
             </table>
             <button onClick={() => setShowAccessLogs(false)}>닫기</button>
+          </div>
+        </div>
+      )}
+      {showPurchaseModal && selectedEmployee && (
+        <div className="modal-overlay" onClick={() => setShowPurchaseModal(false)}>
+          <div className="modal-content purchase-history-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h4 className="section-title">
+                {selectedEmployee.groupNumber}, {selectedEmployee.name} 님의 미지급쿠폰내역
+              </h4>
+              <button className="modal-close" onClick={() => setShowPurchaseModal(false)}>닫기</button>
+            </div>
+            <div className="purchase-history-section">
+              {selectedEmployeePurchases.filter(purchase => !purchase.isDelivered).length > 0 ? (
+                <table className="purchase-history-table">
+                  <thead>
+                    <tr>
+                      <th>상품명</th>
+                      <th>구매일</th>
+                      <th>상태</th>
+                      <th>액션</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedEmployeePurchases
+                      .filter(purchase => !purchase.isDelivered)
+                      .map((purchase) => (
+                        <tr key={purchase._id}>
+                          <td>{purchase.itemName}</td>
+                          <td>{new Date(purchase.purchaseDate).toLocaleDateString()}</td>
+                          <td><span className="status pending">미지급</span></td>
+                          <td>
+                            <button className="action-button complete" onClick={() => handleCompletePurchase(purchase._id)}>
+                              지급완료
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="no-data">현재 미지급 쿠폰 내역이 없습니다.</p>
+              )}
+            </div>
+            <div className="purchase-history-section">
+              <h4 className="section-title">지난 구매내역</h4>
+              {selectedEmployeePurchases.filter(purchase => purchase.isDelivered).length > 0 ? (
+                <table className="purchase-history-table">
+                  <thead>
+                    <tr>
+                      <th>상품명</th>
+                      <th>구매일</th>
+                      <th>지급일</th>
+                      <th>상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedEmployeePurchases
+                      .filter(purchase => purchase.isDelivered)
+                      .map((purchase) => (
+                        <tr key={purchase._id}>
+                          <td>{purchase.itemName}</td>
+                          <td>{new Date(purchase.purchaseDate).toLocaleDateString()}</td>
+                          <td>{new Date(purchase.deliveryDate).toLocaleDateString()}</td>
+                          <td><span className="status completed">지급완료</span></td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="no-data">지난 구매 내역이 없습니다.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

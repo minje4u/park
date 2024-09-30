@@ -9,6 +9,17 @@ const API_URL = process.env.NODE_ENV === 'production'
 
 axios.defaults.baseURL = API_URL;
 
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API 요청 중 오류:', error);
+    if (error.response) {
+      console.error('오류 응답:', error.response.data);
+    }
+    return Promise.reject(error);
+  }
+);
+
 const WorkerPage = () => {
   const { groupNumber } = useParams();
   const formattedGroupNumber = groupNumber ? groupNumber.toString() : undefined;
@@ -23,8 +34,13 @@ const WorkerPage = () => {
   const [lastMonthData, setLastMonthData] = useState(null);
   const [notification, setNotification] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
-  const [fortune, setFortune] = useState(null);
-  const [canCheckFortune, setCanCheckFortune] = useState(true);
+  const [fortune, setFortune] = useState('');
+  const [luckyScore, setLuckyScore] = useState(0);
+  const [accumulatedScore, setAccumulatedScore] = useState(0);
+  const [showLuckyShop, setShowLuckyShop] = useState(false);
+  const [luckyShopItems, setLuckyShopItems] = useState([]);
+  const [canViewFortune, setCanViewFortune] = useState(true);
+  const [lastFortuneDate, setLastFortuneDate] = useState(null);
 
   useEffect(() => {
     const eventSource = new EventSource('https://parkpa.netlify.app/.netlify/functions/api/events');
@@ -98,40 +114,74 @@ const WorkerPage = () => {
     }
   }, [groupNumber]);
 
-  const checkFortune = useCallback(async () => {
+  const fetchFortune = useCallback(async () => {
     try {
-      const response = await axios.get('/fortunes/random');
-      setFortune(response.data.content);
-      setCanCheckFortune(false);
-      localStorage.setItem(`fortune_${formattedGroupNumber}`, response.data.content);
-      localStorage.setItem(`lastCheckedDate_${formattedGroupNumber}`, new Date().toDateString());
+      const response = await axios.get(`/fortunelogs/${groupNumber}`);
+      if (response.data) {
+        setFortune(response.data.content);
+        setLuckyScore(response.data.luckyScore);
+        setAccumulatedScore(response.data.accumulatedScore);
+        setLastFortuneDate(response.data.lastViewDate);
+        // 여기서 운세 내용을 설정하지 않습니다.
+      } else {
+        setFortune('');
+        setLuckyScore(0);
+        setLastFortuneDate(null);
+      }
     } catch (error) {
-      console.error('운세 확인 중 오류 발생:', error);
+      console.error('운세 조회 중 오류:', error);
+      setFortune('');
+      setLuckyScore(0);
+      setLastFortuneDate(null);
     }
-  }, [formattedGroupNumber]);
-  
-  useEffect(() => {
-    const lastCheckedDate = localStorage.getItem(`lastCheckedDate_${formattedGroupNumber}`);
-    const storedFortune = localStorage.getItem(`fortune_${formattedGroupNumber}`);
-    const today = new Date().toDateString();
-  
-    if (lastCheckedDate === today && storedFortune) {
-      setFortune(storedFortune);
-      setCanCheckFortune(false);
-    } else {
-      setFortune(null);
-      setCanCheckFortune(true);
-      localStorage.removeItem(`fortune_${formattedGroupNumber}`);
-      localStorage.removeItem(`lastCheckedDate_${formattedGroupNumber}`);
-    }
-  }, [formattedGroupNumber]);
+  }, [groupNumber]);
 
   useEffect(() => {
-    if (fortune) {
-      localStorage.setItem('fortune', fortune);
-      localStorage.setItem('lastCheckedDate', new Date().toDateString());
+    fetchFortune();
+  }, [fetchFortune]);
+
+  useEffect(() => {
+    const checkFortuneAvailability = () => {
+      if (lastFortuneDate) {
+        const lastDate = new Date(lastFortuneDate);
+        const today = new Date();
+        
+        // 날짜만 비교 (시간 제외)
+        if (lastDate.toDateString() !== today.toDateString()) {
+          setCanViewFortune(true);
+        } else {
+          setCanViewFortune(false);
+        }
+      } else {
+        setCanViewFortune(true);
+      }
+    };
+
+    checkFortuneAvailability();
+  }, [lastFortuneDate]);
+
+  const handleFortuneRefresh = async () => {
+    if (!canViewFortune) {
+      alert('오늘은 이미 운세를 확인하셨습니다. 내일 다시 시도해주세요.');
+      return;
     }
-  }, [fortune]);
+
+    try {
+      const response = await axios.post('/fortunelogs/use', { groupNumber });
+      if (response.data && response.data.content) {
+        setFortune(response.data.content);
+        setLuckyScore(response.data.luckyScore);
+        setAccumulatedScore(response.data.accumulatedScore);
+        setLastFortuneDate(new Date().toISOString());
+        setCanViewFortune(false);
+      } else {
+        throw new Error('Invalid response data');
+      }
+    } catch (error) {
+      console.error('운세 새로고침 중 오류:', error);
+      alert('운세를 가져오는데 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+  };
 
   useEffect(() => {
     if (formattedGroupNumber) {
@@ -198,7 +248,7 @@ const WorkerPage = () => {
     if (lastMonthData) {
       return (
         <>
-          <p>총 작업량: {lastMonthData.totalWeight.toFixed(2)} Kg</p>
+          <p> 업량: {lastMonthData.totalWeight.toFixed(2)} Kg</p>
           <p>총 도급비: {formatCurrency(lastMonthData.totalPayment)}</p>
         </>
       );
@@ -206,7 +256,6 @@ const WorkerPage = () => {
     return <p>데이터를 불러오는 중...</p>;
   };
 
-  // 캡처 방지 코드 추가
   useEffect(() => {
     const handleContextMenu = (e) => e.preventDefault();
     const handleKeyDown = (e) => {
@@ -293,6 +342,68 @@ const WorkerPage = () => {
     }
     setSortConfig({ key, direction });
   };
+
+  const handleLuckyShopOpen = () => {
+    setShowLuckyShop(true);
+    fetchLuckyShopItems();
+  };
+
+  const handleLuckyShopClose = () => {
+    setShowLuckyShop(false);
+  };
+
+  const fetchLuckyShopItems = async () => {
+    try {
+      const response = await axios.get('/lucky-shop-items');
+      setLuckyShopItems(response.data);
+    } catch (error) {
+      console.error('상품 목록 조회 중 오류:', error);
+    }
+  };
+
+  const handlePurchase = async (itemId) => {
+    try {
+      const response = await axios.post(`/lucky-shop-purchase/${itemId}`, { groupNumber });
+      setAccumulatedScore(response.data.newScore);
+      alert('구매가 완료되었습니다.');
+      fetchLuckyShopItems(); // 구매 후 상품 목록 새로고침
+    } catch (error) {
+      alert(error.response?.data?.error || '구매 중 오류가 발생했습니다.');
+    }
+  };
+
+  useEffect(() => {
+    const checkOnline = () => {
+      if (navigator.onLine) {
+        console.log('온라인 상태입니다.');
+      } else {
+        console.log('오프라인 상태입니다.');
+        alert('인터넷 연결을 확인해 주세요.');
+      }
+    };
+
+    window.addEventListener('online', checkOnline);
+    window.addEventListener('offline', checkOnline);
+
+    return () => {
+      window.removeEventListener('online', checkOnline);
+      window.removeEventListener('offline', checkOnline);
+    };
+  }, []);
+
+  useEffect(() => {
+    // 예시: 마지막 운세 확인 날짜를 가져오는 API 호출
+    const fetchLastFortuneDate = async () => {
+      try {
+        const response = await axios.get('/api/last-fortune-date');
+        setLastFortuneDate(response.data.date);
+      } catch (error) {
+        console.error('마지막 운세 날짜 조회 실패:', error);
+      }
+    };
+
+    fetchLastFortuneDate();
+  }, []);
 
   return (
     <div className="worker-container">
@@ -390,19 +501,33 @@ const WorkerPage = () => {
           <span className="stat-value">{sumKg.toFixed(2)} Kg</span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">총 도급비</span>
+          <span className="stat-label">총 도급비용</span>
           <span className="stat-value">{formatCurrency(totalPay)}</span>
         </div>
       </div>
 
       <div className="fortune-section">
-        <h3>오늘의 운세</h3>
-        {fortune ? (
-          <p>{fortune}</p>
-        ) : canCheckFortune ? (
-          <button onClick={checkFortune}>운세 확인하기</button>
-        ) : (
-          <p>오늘의 운세를 이미 확인했습니다.</p>
+        <div className="fortune-header">
+          <h3>오늘의 운세</h3>
+          <div className="fortune-buttons">
+            {accumulatedScore >= 100 && (
+              <button onClick={handleLuckyShopOpen} className="lucky-shop-button">
+                행운상점
+              </button>
+            )}
+            {canViewFortune && (
+              <button onClick={handleFortuneRefresh} className="fortune-button">
+                오늘의 운세 보기
+              </button>
+            )}
+          </div>
+        </div>
+        {fortune && (
+          <div className="fortune-content">
+            <p>{fortune}</p>
+            <p>행운 점수: {luckyScore}</p>
+            <p>누적 점수: {accumulatedScore}</p>
+          </div>
         )}
       </div>
 
@@ -435,6 +560,38 @@ const WorkerPage = () => {
             <p>{selectedNotice.content}</p>
             <small>{new Date(selectedNotice.dateTime).toLocaleString()}</small>
             <button onClick={closeNoticeModal}>닫기</button>
+          </div>
+        </div>
+      )}
+
+      {showLuckyShop && (
+        <div className="lucky-shop-modal">
+          <div className="lucky-shop-content">
+            <h2>행운 상점</h2>
+            <p className="current-points">현재 보유 점수: <span>{accumulatedScore}</span></p>
+            <div className="lucky-shop-items">
+              {luckyShopItems.map((item) => (
+                <div key={item._id} className="lucky-shop-item">
+                  <h3>
+                    {item.name.split('//').map((part, index) => (
+                      <React.Fragment key={index}>
+                        {index > 0 && <><br /></>}
+                        {part}
+                      </React.Fragment>
+                    ))}
+                  </h3>
+                  <p className="item-points">{item.points} 포인트</p>
+                  <button 
+                    onClick={() => handlePurchase(item._id)}
+                    disabled={accumulatedScore < item.points}
+                    className={accumulatedScore < item.points ? 'disabled' : ''}
+                  >
+                    {accumulatedScore < item.points ? '포인트 부족' : '구매하기'}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button onClick={handleLuckyShopClose} className="close-button">닫기</button>
           </div>
         </div>
       )}

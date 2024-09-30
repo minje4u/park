@@ -5,7 +5,7 @@ import WorkStatistics from "./WorkStatistics";
 import "./AdminPage.css"; 
 import axios from 'axios';
 import FortuneManagement from "./FortuneManagement";
-import PrizeManagement from "./PrizeManagement";
+import LuckyShopManagement from './LuckyShopManagement';
 const API_URL = process.env.NODE_ENV === 'production'
   ? '/.netlify/functions/api'
   : 'http://localhost:8888/.netlify/functions/api';
@@ -21,6 +21,7 @@ const AdminPage = ({ username }) => {
   const [noticeContent, setNoticeContent] = useState("");
   const [editingNoticeId, setEditingNoticeId] = useState(null);
   const [fortunes, setFortunes] = useState([]);
+  const [workers, setWorkers] = useState([]);
 
   const fetchNotices = useCallback(async () => {
     try {
@@ -107,8 +108,22 @@ const AdminPage = ({ username }) => {
     setMenuOpen(prevState => !prevState);
   };
 
-  const closeMenu = () => {
-    setMenuOpen(false);
+  const fetchWorkers = useCallback(async () => {
+    try {
+      const response = await axios.get('/employees');
+      setWorkers(response.data);
+    } catch (error) {
+      console.error('작업자 목록 조회 중 오류:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWorkers();
+  }, [fetchWorkers]);
+
+  const handleTabClick = (tab) => {
+    setActiveTab(tab);
+    setMenuOpen(false);  // 탭을 선택하면 메뉴를 닫습니다.
   };
 
   return (
@@ -123,72 +138,20 @@ const AdminPage = ({ username }) => {
       </div>
 
       <div className={`admin-tabs ${menuOpen ? 'open' : ''}`}>
-        <button
-          className={`admin-tab-button ${activeTab === "작업등록" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("작업등록");
-            closeMenu();
-          }}
-        >
-          작업등록
-        </button>
-        <button
-          className={`admin-tab-button ${activeTab === "작업량통계" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("작업량통계");
-            closeMenu();
-          }}
-        >
-          작업량통계
-        </button>
-        <button
-          className={`admin-tab-button ${activeTab === "작업자관리" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("작업자관리");
-            closeMenu();
-          }}
-        >
-          작업자관리
-        </button>
-        <button
-          className={`admin-tab-button ${activeTab === "공지사항" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("공지사항");
-            closeMenu();
-          }}
-        >
-          공지사항
-        </button>
-        <button
-          className={`admin-tab-button ${activeTab === "운세관리" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("운세관리");
-            closeMenu();
-          }}
-        >
-          운세관리
-        </button>
-        <button
-          className={`admin-tab-button ${activeTab === "사다리상품" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("사다리상품");
-            closeMenu();
-          }}
-        >
-          사다리상품
-        </button>
+        <button onClick={() => handleTabClick("작업등록")}>작업등록</button>
+        <button onClick={() => handleTabClick("작업량통계")}>작업량통계</button>
+        <button onClick={() => handleTabClick("작업자관리")}>작업자관리</button>
+        <button onClick={() => handleTabClick("공지사항")}>공지사항</button>
+        <button onClick={() => handleTabClick("운세관리")}>운세관리</button>
+        <button onClick={() => handleTabClick("행운상점")}>행운상점</button>
       </div>
 
       <div className="admin-content">
-        {activeTab === "작업등록" && (
-          <WorkRegistration onConfirm={handleWorkRegistration} />
-        )}
-        {activeTab === "작업량통계" && (
-          <WorkStatistics />
-        )}
+        {activeTab === "작업등록" && <WorkRegistration onConfirm={handleWorkRegistration} />}
+        {activeTab === "작업량통계" && <WorkStatistics />}
         {activeTab === "작업자관리" && (
-          <EmployeeManagement />
-        )}
+           <EmployeeManagement workers={workers} />
+         )}
         {activeTab === "공지사항" && (
           <div className="notice-section">
             <h2 className="section-title">공지사항 게시판</h2>
@@ -246,12 +209,8 @@ const AdminPage = ({ username }) => {
             </div>
           </div>
         )}
-        {activeTab === "운세관리" && (
-          <FortuneManagement fortunes={fortunes} setFortunes={setFortunes} />
-        )}
-        {activeTab === "사다리상품" && (
-          <PrizeManagement />
-        )}
+        {activeTab === "운세관리" && <FortuneManagement fortunes={fortunes} setFortunes={setFortunes} />}
+        {activeTab === "행운상점" && <LuckyShopManagement />}
       </div>
     </div>
   );

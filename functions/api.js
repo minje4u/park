@@ -1,7 +1,11 @@
 require('dotenv').config();
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 
+
 const mongoose = require('mongoose');
+const moment = require('moment-timezone');
+moment.tz.setDefault("Asia/Seoul");
+
 const Employee = require('./models/employee');
 const Work = require('./models/work');
 const Notice = require('./models/notice');
@@ -11,6 +15,9 @@ const cors = require('cors');
 const webpush = require('web-push');
 const EventEmitter = require('events');
 const eventEmitter = new EventEmitter();
+const LuckyShopItem = require('./models/LuckyShopItem');
+const LuckyShopPurchase = require('./models/LuckyShopPurchase');
+const FortuneLog = require('./models/fortuneLog');
 
 const prizeSchema = new mongoose.Schema({
   name: String,
@@ -233,7 +240,7 @@ router.get('/notices', async (req, res) => {
     const notices = await Notice.find().sort({ dateTime: -1 });
     res.json(notices);
   } catch (error) {
-    res.status(500).json({ error: '공지사항 조회 중 오류가 발생했습니다.' });
+    res.status(500).json({ error: '공지사항 조회 중 오류가 발생했니다.' });
   }
 });
 
@@ -596,21 +603,12 @@ router.get('/access-logs/:groupNumber', async (req, res) => {
   }
 });
 
-// Fortune 모델 추가
+// Fortune 모델 선언
 const fortuneSchema = new mongoose.Schema({
   content: String,
-  createdAt: { type: Date, default: Date.now }
+  // 필요한 다른 필드들을 여기에 추가하세요
 });
-
-const Fortune = mongoose.model('Fortune', fortuneSchema);
-
-// 사용자 운세 조회 기록 모델
-const fortuneLogSchema = new mongoose.Schema({
-  groupNumber: String,
-  lastCheckedAt: Date
-});
-
-const FortuneLog = mongoose.model('FortuneLog', fortuneLogSchema);
+const Fortune = mongoose.models.Fortune || mongoose.model('Fortune', fortuneSchema);
 
 // 운세 문구 등록 API
 router.post('/fortunes', async (req, res) => {
@@ -618,7 +616,7 @@ router.post('/fortunes', async (req, res) => {
     const { content } = req.body;
     const newFortune = new Fortune({ content });
     await newFortune.save();
-    res.status(201).json({ message: '운세 문구가 등록되었습니다.', fortune: newFortune });
+    res.status(201).json({ message: ' 문구가 등록되었습니다.', fortune: newFortune });
   } catch (error) {
     res.status(500).json({ error: '운세 문구 등록 중 오류가 발생했습니다.' });
   }
@@ -635,41 +633,33 @@ router.get('/fortunes', async (req, res) => {
 });
 
 // 오늘의 운세 조회 API
-router.get('/fortunes/today/:groupNumber', async (req, res) => {
+router.get('/fortunelogs/:groupNumber', async (req, res) => {
   try {
     const { groupNumber } = req.params;
-    const today = new Date();
+    const today = moment().tz("Asia/Seoul").startOf('day').toDate();
     today.setHours(0, 0, 0, 0);
 
-    const log = await FortuneLog.findOne({ groupNumber });
+    let fortuneLog = await FortuneLog.findOne({ groupNumber });
     
-    if (log && log.lastCheckedAt >= today) {
-      res.json({ message: '오늘 이미 운세를 확인했습니다.', canCheck: false, fortune: log.fortune });
-      return;
+    if (!fortuneLog) {
+      fortuneLog = new FortuneLog({ groupNumber, accumulatedScore: 0 });
     }
 
-    const count = await Fortune.countDocuments();
-    if (count === 0) {
-      res.status(404).json({ error: '운세 문구가 없습니다.' });
-      return;
-    }
+    const viewedToday = fortuneLog.lastCheckedAt && fortuneLog.lastCheckedAt >= today;
 
-    const seed = parseInt(groupNumber) + today.getTime();
-    const random = Math.floor(Math.abs(Math.sin(seed) * count));
-    const fortune = await Fortune.findOne().skip(random);
-
-    await FortuneLog.findOneAndUpdate(
-      { groupNumber },
-      { lastCheckedAt: new Date(), fortune: fortune.content },
-      { upsert: true }
-    );
-
-    res.json({ fortune: fortune.content, canCheck: true });
+    res.json({
+      content: fortuneLog.fortune,
+      luckyScore: fortuneLog.luckyScore,
+      accumulatedScore: fortuneLog.accumulatedScore,
+      viewedToday: viewedToday,
+      lastViewDate: fortuneLog.lastCheckedAt
+    });
   } catch (error) {
-    console.error('오늘의 운세 조회 중 오류:', error);
-    res.status(500).json({ error: '오늘의 운세 조회 중 오류가 발생했습니다.' });
+    console.error('운세 로그 조회 중 오류:', error);
+    res.status(500).json({ error: '운세 로그 조회 중 오류가 발생했습니다.' });
   }
 });
+
 // 운세 파일 업로드 API
 router.post('/fortunes/upload', async (req, res) => {
   try {
@@ -807,5 +797,241 @@ router.get('/fortunes/random', async (req, res) => {
   } catch (error) {
     console.error('랜덤 운세 조회 중 오류:', error);
     res.status(500).json({ error: '운세를 가져오는데 실패했습니다.' });
+  }
+});
+
+// 구매 내역 조회
+router.get('/lucky-shop-purchases', async (req, res) => {
+  try {
+    const purchases = await LuckyShopPurchase.find().sort({ purchaseDate: -1 });
+    console.log('조회된 구매 내역:', purchases);
+    res.json(purchases);
+  } catch (error) {
+    console.error('구매 내역 조회 중 오류:', error);
+    res.status(500).json({ error: '구매 내역 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 구매 완료 처리
+router.post('/lucky-shop-purchase-complete/:id', async (req, res) => {
+  try {
+    const purchase = await LuckyShopPurchase.findByIdAndUpdate(
+      req.params.id,
+      { 
+        isDelivered: true,
+        deliveryDate: new Date()
+      },
+      { new: true }
+    );
+    
+    if (!purchase) {
+      return res.status(404).json({ error: '구매 내역을 찾을 수 없습니다.' });
+    }
+    
+    console.log('구매 완료 처리됨:', purchase);
+    res.json(purchase);
+  } catch (error) {
+    console.error('구매 완료 처리 중 오류:', error);
+    res.status(500).json({ error: '구매 완료 처리 중 오류가 발생했습니다.' });
+  }
+});
+
+// 행운 상점 아이템 목록 조회
+router.get('/lucky-shop-items', async (req, res) => {
+  try {
+    const items = await LuckyShopItem.find();
+    res.json(items);
+  } catch (error) {
+    console.error('상품 목록 조회 중 오류:', error);
+    res.status(500).json({ error: '상품 목록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 행운 상점 아이템 구매
+router.post('/lucky-shop-purchase/:id', async (req, res) => {
+  try {
+    const { groupNumber } = req.body;
+    const item = await LuckyShopItem.findById(req.params.id);
+    const fortuneLog = await FortuneLog.findOne({ groupNumber });
+
+    if (!item || !fortuneLog) {
+      return res.status(404).json({ error: '상품 또는 사용자 정보를 찾을 수 없습니다.' });
+    }
+
+    if (fortuneLog.accumulatedScore < item.points) {
+      return res.status(400).json({ error: '누적 점수가 부족합니다.' });
+    }
+
+    fortuneLog.accumulatedScore -= item.points;
+    await fortuneLog.save();
+
+    const newPurchase = new LuckyShopPurchase({
+      groupNumber,
+      itemName: item.name
+    });
+    await newPurchase.save();
+
+    res.json({ message: '구매가 완료되었습니다.', newScore: fortuneLog.accumulatedScore });
+  } catch (error) {
+    console.error('상품 구매 중 오류:', error);
+    res.status(500).json({ error: '상품 구매 중 오류가 발생했습니다.' });
+  }
+});
+
+// 운세 점수 생성 함수
+function generateLuckyScore() {
+  const rand = Math.random() * 100;
+  if (rand < 0.0000001) return 100;
+  if (rand < 0.0000005) return 95 + Math.floor(Math.random() * 5);
+  if (rand < 0.0000010) return 90 + Math.floor(Math.random() * 5);
+  if (rand < 0.0000020) return 80 + Math.floor(Math.random() * 10);
+  if (rand < 0.0000120) return 70 + Math.floor(Math.random() * 10);
+  if (rand < 0.0001120) return 60 + Math.floor(Math.random() * 10);
+  if (rand < 0.0011120) return 50 + Math.floor(Math.random() * 10);
+  if (rand < 0.0111120) return 30 + Math.floor(Math.random() * 20);
+  if (rand < 0.1111120) return 10 + Math.floor(Math.random() * 20);
+  if (rand < 0.6111120) return 4 + Math.floor(Math.random() * 6); // 0.5% 확률로 4-9점
+  return 1 + Math.floor(Math.random() * 3); // 나머지 확률로 1-3점
+}
+
+router.post('/fortunelogs/use', async (req, res) => {
+  try {
+    const { groupNumber } = req.body;
+    console.log('운세 요청 받음. groupNumber:', groupNumber);
+
+    const count = await Fortune.countDocuments();
+    if (count === 0) {
+      return res.status(404).json({ error: '운세 데이터가 없습니다.' });
+    }
+
+    const random = Math.floor(Math.random() * count);
+    const fortuneDoc = await Fortune.findOne().skip(random);
+
+    if (!fortuneDoc) {
+      return res.status(404).json({ error: '운세를 찾을 수 없습니다.' });
+    }
+
+    const luckyScore = generateLuckyScore();
+
+    let fortuneLog = await FortuneLog.findOne({ groupNumber });
+    if (!fortuneLog) {
+      fortuneLog = new FortuneLog({ groupNumber, accumulatedScore: 0 });
+    }
+    
+    fortuneLog.accumulatedScore += luckyScore;
+    fortuneLog.fortune = fortuneDoc.content;
+    fortuneLog.luckyScore = luckyScore;
+    fortuneLog.lastCheckedAt = new Date();
+    
+    await fortuneLog.save();
+
+    console.log(`${groupNumber}의 누적 점수 업데이트:`, fortuneLog.accumulatedScore);
+
+    res.json({
+      content: fortuneDoc.content,
+      luckyScore: luckyScore,
+      accumulatedScore: fortuneLog.accumulatedScore
+    });
+  } catch (error) {
+    console.error('운세 처리 중 오류:', error);
+    res.status(500).json({ error: '운세 처리 중 오류가 발생했습니다.' });
+  }
+});
+
+router.post('/fortune/use-secret/:groupNumber', async (req, res) => {
+  try {
+    const { groupNumber } = req.params;
+    let fortuneLog = await FortuneLog.findOne({ groupNumber });
+    
+    if (!fortuneLog) {
+      fortuneLog = new FortuneLog({ groupNumber, accumulatedScore: 0 });
+    }
+    
+    // 시크릿 버튼 사용 시 추가 점수 (예: 50점)
+    const secretBonus = 50;
+    fortuneLog.accumulatedScore += secretBonus;
+    await fortuneLog.save();
+
+    res.json({ 
+      message: '시크릿 버튼이 성공적으로 사용되었습니다.',
+      accumulatedScore: fortuneLog.accumulatedScore 
+    });
+  } catch (error) {
+    console.error('시크릿 버튼 처리 중 오류:', error);
+    res.status(500).json({ error: '시크릿 버튼 처리 중 오류가 발생했습니다.' });
+  }
+});
+
+router.get('/accumulated-scores', async (req, res) => {
+  try {
+    const fortuneLogs = await FortuneLog.find({});
+    const accumulatedScores = {};
+    fortuneLogs.forEach(log => {
+      accumulatedScores[log.groupNumber] = log.accumulatedScore || 0;
+    });
+    res.json(accumulatedScores);
+  } catch (error) {
+    console.error('누적 점수 조회 중 오류:', error);
+    res.status(500).json({ error: '누적 점수 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+router.put('/employee/:groupNumber', async (req, res) => {
+  try {
+    const { groupNumber } = req.params;
+    const { name } = req.body;
+    const updatedEmployee = await Employee.findOneAndUpdate(
+      { groupNumber },
+      { name },
+      { new: true }
+    );
+    if (!updatedEmployee) {
+      return res.status(404).json({ error: '작업자를 찾을 수 없습니다.' });
+    }
+    res.json(updatedEmployee);
+  } catch (error) {
+    console.error('작업자 이름 수정 중 오류:', error);
+    res.status(500).json({ error: '작업자 이름 수정 중 오류가 발생했습니다.' });
+  }
+});
+
+router.put('/lucky-shop-items/:id', async (req, res) => {
+  try {
+    const { name, points } = req.body;
+    const updatedItem = await LuckyShopItem.findByIdAndUpdate(
+      req.params.id,
+      { name, points },
+      { new: true }
+    );
+    res.json(updatedItem);
+  } catch (error) {
+    console.error('상품 수정 중 오류:', error);
+    res.status(500).json({ error: '상품 수정 중 오류가 발생했습니다.' });
+  }
+});
+
+router.delete('/lucky-shop-items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedItem = await LuckyShopItem.findByIdAndDelete(id);
+    if (!deletedItem) {
+      return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
+    }
+    res.json({ message: '상품이 성공적으로 삭제되었습니다.' });
+  } catch (error) {
+    console.error('상품 삭제 중 오류:', error);
+    res.status(500).json({ error: '상품 삭제 중 오류가 발생했습니다.' });
+  }
+});
+
+router.post('/lucky-shop-items', async (req, res) => {
+  try {
+    const { name, points } = req.body;
+    const newItem = new LuckyShopItem({ name, points });
+    await newItem.save();
+    res.status(201).json(newItem);
+  } catch (error) {
+    console.error('상품 추가 중 오류:', error);
+    res.status(500).json({ error: '상품 추가 중 오류가 발생했습니다.' });
   }
 });

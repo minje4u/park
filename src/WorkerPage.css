@@ -58,7 +58,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 0; /* 이 속성을 추가하여 flex item이 너무 작아지지 않도록 합니다 */
+  min-width: 0; /* 이 속성을 추가하여 flex item이 너무 아지 않도록 합니다 */
 }
 
 .stat-card h3 {
@@ -543,58 +543,279 @@ body {
 }
 
 .fortune-section {
-  background-color: #fff3cd;
-  border: 1px solid #ffeeba;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
   border-radius: 8px;
-  padding: 10px;
-  margin-top: 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  padding: 20px;
+  margin-bottom: 20px;
 }
 
-.fortune-section h3 {
-  color: #856404;
-  font-size: 0.9em;
-  margin: 0 0 5px 0;
+.fortune-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
-.fortune-section p {
-  color: #533f03;
-  font-size: 0.8em;
+.fortune-header h3 {
+  font-size: 1.1em;
+  color: #495057;
   margin: 0;
 }
 
-.fortune-section button {
-  background-color: #ffc107;
-  color: #533f03;
-  border: none;
-  border-radius: 4px;
-  padding: 5px 10px;
-  font-size: 0.8em;
-  cursor: pointer;
-  transition: background-color 0.3s;
+.fortune-buttons {
+  display: flex;
+  gap: 8px;  /* 버튼 사이의 간격 */
 }
 
-.fortune-section button:hover {
-  background-color: #e0a800;
-}
-
-.fortune-reset {
-  text-align: right;
-  margin-top: 5px;
-}
-
-.fortune-reset button {
-  background-color: #6c757d;
+.fortune-button {
+  padding: 4px 8px;
+  font-size: 0.85em;
+  background-color: #007bff;
   color: white;
   border: none;
-  border-radius: 4px;
-  padding: 3px 8px;
-  font-size: 0.7em;
+  border-radius: 3px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.2s;
 }
 
-.fortune-reset button:hover {
-  background-color: #5a6268;
+.fortune-button:hover {
+  background-color: #0056b3;
+}
+
+.lucky-shop-button {
+  padding: 4px 8px;
+  font-size: 0.85em;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.lucky-shop-button:hover {
+  background-color: #218838;
+}
+
+.fortune-info {
+  background-color: #e9ecef;
+  padding: 12px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fortune-content {
+  flex: 1;
+}
+
+.fortune-content p {
+  margin: 0;
+  line-height: 1.4;
+  font-size: 0.9em;
+}
+
+.accumulated-score {
+  font-size: 0.9em;
+  font-weight: bold;
+  color: #007bff;
+  text-align: right;
+  margin-left: 15px;
+}
+
+.fortune-content p {
+  margin: 0;
+  line-height: 1.4;
+  font-size: 0.9em;
+}
+
+.score-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 5px;
+  font-size: 0.9em;
+}
+
+.lucky-score {
+  color: #28a745;
+}
+
+.accumulated-score {
+  color: #007bff;
+}
+
+.fortune-content p {
+  margin: 0;
+  line-height: 1.4;
+  font-size: 0.9em;
+}
+
+.score-info {
+  display: flex;
+  align-items: center;
+  margin-top: 5px;
+  font-size: 0.9em;
+}
+
+.lucky-score {
+  color: #28a745;
+}
+
+.score-divider {
+  margin: 0 5px;
+  color: #6c757d;
+}
+
+.accumulated-score {
+  color: #007bff;
+}
+
+.fortune-content p {
+  margin: 0;
+  line-height: 1.4;
+  font-size: 0.9em;
+}
+
+.score-info {
+  margin-top: 5px;
+  font-size: 0.9em;
+  color: #495057;
+}
+
+.lucky-shop-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.lucky-shop-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.lucky-shop-content h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.current-points {
+  text-align: center;
+  font-size: 1.2em;
+  margin-bottom: 20px;
+}
+
+.current-points span {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.lucky-shop-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  padding: 20px;
+}
+
+.lucky-shop-item {
+  flex: 0 1 calc(33.333% - 20px);
+  min-width: 200px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  transition: transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.lucky-shop-item:hover {
+  transform: scale(1.05);
+}
+
+.lucky-shop-item h3 {
+  margin: 0 0 10px 0;
+  font-size: 1em;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.8;  /* 줄 간격을 살짝 늘림 */
+}
+
+.item-points {
+  font-weight: bold;
+  color: #28a745;
+  margin: 10px 0;
+}
+
+.lucky-shop-item button {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.9em;
+}
+
+.lucky-shop-item button:hover:not(.disabled) {
+  background-color: #0056b3;
+}
+
+.lucky-shop-item button.disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .lucky-shop-item {
+    flex: 0 1 calc(50% - 20px);
+  }
+}
+
+@media (max-width: 480px) {
+  .lucky-shop-item {
+    flex: 0 1 100%;
+  }
+}
+
+.close-button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: #dc3545;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: #c82333;
 }
