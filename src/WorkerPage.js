@@ -524,9 +524,13 @@ const WorkerPage = () => {
         </div>
         {fortune && (
           <div className="fortune-content">
-            <p>{fortune}</p>
-            <p>행운 점수: {luckyScore}</p>
-            <p>누적 점수: {accumulatedScore}</p>
+            <div className="fortune-card">
+              <div className="fortune-scores">
+                <span className="score-item">행운 {luckyScore}</span>
+                <span className="score-item">누적 {accumulatedScore}</span>
+              </div>
+              <p className="fortune-text">{fortune}</p>
+            </div>
           </div>
         )}
       </div>
