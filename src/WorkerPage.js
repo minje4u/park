@@ -166,6 +166,8 @@ const WorkerPage = () => {
       return;
     }
 
+    setCanViewFortune(false); // 버튼을 비활성화하여 연타 방지
+
     try {
       const response = await axios.post('/fortunelogs/use', { groupNumber });
       if (response.data && response.data.content) {
@@ -173,13 +175,13 @@ const WorkerPage = () => {
         setLuckyScore(response.data.luckyScore);
         setAccumulatedScore(response.data.accumulatedScore);
         setLastFortuneDate(new Date().toISOString());
-        setCanViewFortune(false);
       } else {
         throw new Error('Invalid response data');
       }
     } catch (error) {
       console.error('운세 새로고침 중 오류:', error);
       alert('운세를 가져오는데 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      setCanViewFortune(true); // 오류 발생 시 버튼을 다시 활성화
     }
   };
 
