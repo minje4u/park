@@ -508,7 +508,7 @@ const WorkerPage = () => {
 
       <div className="fortune-section">
         <div className="fortune-header">
-          <h3>오늘의 운세</h3>
+          <h5>오늘도 화이팅!</h5>
           <div className="fortune-buttons">
             {accumulatedScore >= 100 && (
               <button onClick={handleLuckyShopOpen} className="lucky-shop-button">
@@ -517,7 +517,7 @@ const WorkerPage = () => {
             )}
             {canViewFortune && (
               <button onClick={handleFortuneRefresh} className="fortune-button">
-                오늘의 운세 보기
+                오늘의 한마디
               </button>
             )}
           </div>
