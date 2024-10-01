@@ -20,7 +20,7 @@ axios.interceptors.response.use(
   }
 );
 
-const WorkerPage = () => {
+const WorkerPage = ({ monthStats }) => {
   const { groupNumber } = useParams();
   const formattedGroupNumber = groupNumber ? groupNumber.toString() : undefined;
   const [workerName, setWorkerName] = useState('');
@@ -31,7 +31,6 @@ const WorkerPage = () => {
   const [notices, setNotices] = useState([]);
   const [selectedNotice, setSelectedNotice] = useState(null);
   const [showLastMonthModal, setShowLastMonthModal] = useState(false);
-  const [lastMonthData, setLastMonthData] = useState(null);
   const [notification, setNotification] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   const [fortune, setFortune] = useState('');
@@ -41,6 +40,8 @@ const WorkerPage = () => {
   const [luckyShopItems, setLuckyShopItems] = useState([]);
   const [canViewFortune, setCanViewFortune] = useState(true);
   const [lastFortuneDate, setLastFortuneDate] = useState(null);
+  const [lastMonthSummary, setLastMonthSummary] = useState(null);
+  const [isLoadingLastMonth, setIsLoadingLastMonth] = useState(false);
 
   useEffect(() => {
     const eventSource = new EventSource('https://parkpa.netlify.app/.netlify/functions/api/events');
@@ -61,7 +62,7 @@ const WorkerPage = () => {
 
   useEffect(() => {
     if (notification) {
-      alert(`새로운 ${notification.type === 'notice' ? '공지사항' : '작업자료'}가 등록되었습니다.`);
+      alert(`새로운 ${notification.type === 'notice' ? '공지사���' : '작업자료'}가 등록되었습니다.`);
     }
   }, [notification]);
 
@@ -101,16 +102,6 @@ const WorkerPage = () => {
       setTodayData(null);
     } finally {
       setIsLoading(false);
-    }
-  }, [groupNumber]);
-
-  const fetchLastMonthData = useCallback(async () => {
-    try {
-      const response = await axios.get(`/employee/lastmonth?groupNumber=${encodeURIComponent(groupNumber)}`);
-      setLastMonthData(response.data);
-    } catch (error) {
-      console.error('지난달 데이터 조회 중 오류 발생:', error);
-      setLastMonthData(null);
     }
   }, [groupNumber]);
 
@@ -255,29 +246,30 @@ const WorkerPage = () => {
     return new Date(date).toLocaleDateString('ko-KR', options);
   };
 
+  const fetchLastMonthSummary = useCallback(async () => {
+    setIsLoadingLastMonth(true);
+    try {
+      const response = await axios.get(`/last-month-summary/${groupNumber}`);
+      setLastMonthSummary(response.data);
+      // 총 중량에 270을 곱하여 도급비용 계산
+      if (response.data && response.data.totalWeight) {
+        response.data.totalPayment = response.data.totalWeight * 270; // 도급비 합계 설정
+      }
+    } catch (error) {
+      console.error('지난달 요약 데이터 조회 중 오류:', error);
+      setLastMonthSummary(null);
+    } finally {
+      setIsLoadingLastMonth(false);
+    }
+  }, [groupNumber]);
+
   const openLastMonthModal = () => {
-    fetchLastMonthData();
     setShowLastMonthModal(true);
+    fetchLastMonthSummary();
   };
 
   const closeLastMonthModal = () => {
     setShowLastMonthModal(false);
-  };
-
-  const renderLastMonthData = () => {
-    const now = new Date();
-    if (now.getDate() >= 11 && now.getHours() >= 0) {
-      return <p>데이터가 없습니다.</p>;
-    }
-    if (lastMonthData) {
-      return (
-        <>
-          <p> 업량: {lastMonthData.totalWeight.toFixed(2)} Kg</p>
-          <p>총 도급비: {formatCurrency(lastMonthData.totalPayment)}</p>
-        </>
-      );
-    }
-    return <p>데이터를 불러오는 중...</p>;
   };
 
   useEffect(() => {
@@ -429,6 +421,9 @@ const WorkerPage = () => {
     fetchLastFortuneDate();
   }, []);
 
+  const today = new Date();
+  const cutoffDate = new Date(today.getFullYear(), today.getMonth(), 11); // 이번달 11일
+
   return (
     <div className="worker-container">
       <div className="worker-header">
@@ -520,14 +515,20 @@ const WorkerPage = () => {
       </div>
 
       <div className="worker-stats">
-        <div className="stat-card">
-          <span className="stat-label">총 작업량</span>
-          <span className="stat-value">{sumKg.toFixed(2)} Kg</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">총 도급비용</span>
-          <span className="stat-value">{formatCurrency(totalPay)}</span>
-        </div>
+        {today <= cutoffDate ? ( // 오늘이 11일 이하일 경우에만 총계 표시
+          <>
+            <div className="stat-card">
+              <span className="stat-label">총 작업량</span>
+              <span className="stat-value">{sumKg.toFixed(2)} Kg</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-label">총 도급비용</span>
+              <span className="stat-value">{formatCurrency(totalPay)}</span>
+            </div>
+          </>
+        ) : (
+          <p>총계 데이터는 11일까지만 표시됩니다.</p> // 11일 이후 메시지
+        )}
       </div>
 
       <div className="fortune-section">
@@ -575,7 +576,16 @@ const WorkerPage = () => {
         <div className="modal-overlay" onClick={closeLastMonthModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>지난달 도급비용</h3>
-            {renderLastMonthData()}
+            {isLoadingLastMonth ? (
+              <p>데이터를 불러오는 중...</p>
+            ) : lastMonthSummary ? (
+              <>
+                <p>총 중량: {lastMonthSummary.totalWeight.toFixed(2)} Kg</p>
+                <p>총 도급비용: {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(lastMonthSummary.totalPayment)}</p> {/* 계산된 도급비용 사용 */}
+              </>
+            ) : (
+              <p>지난달 데이터가 없습니다.</p>
+            )}
             <button onClick={closeLastMonthModal}>닫기</button>
           </div>
         </div>
@@ -584,10 +594,10 @@ const WorkerPage = () => {
       {selectedNotice && (
         <div className="modal-overlay" onClick={closeNoticeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>{selectedNotice.title}</h3>
-            <p>{selectedNotice.content}</p>
-            <small>{new Date(selectedNotice.dateTime).toLocaleString()}</small>
-            <button onClick={closeNoticeModal}>닫기</button>
+            <h3 className="modal-title">{selectedNotice.title}</h3>
+            <p className="modal-content-text">{selectedNotice.content}</p>
+            <small className="modal-date">{new Date(selectedNotice.dateTime).toLocaleString()}</small>
+            <button className="modal-close-button" onClick={closeNoticeModal}>닫기</button>
           </div>
         </div>
       )}

@@ -1126,3 +1126,102 @@ router.get('/point-history/:groupNumber', async (req, res) => {
     res.status(500).json({ error: '포인트 변동 내역 조회 중 오류가 발생했습니다.' });
   }
 });
+
+// 새로운 스키마 정의
+const monthlyWorkerSummarySchema = new mongoose.Schema({
+  groupNumber: String,
+  year: Number,
+  month: Number,
+  totalWeight: Number,
+  totalPayment: Number
+});
+
+const MonthlyWorkerSummary = mongoose.model('MonthlyWorkerSummary', monthlyWorkerSummarySchema);
+
+// 월별 요약 데이터 생성 함수
+const createMonthlySummary = async () => {
+  const now = new Date();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  const summaries = await Work.aggregate([
+    {
+      $match: {
+        date: { $gte: startOfLastMonth, $lte: endOfLastMonth }
+      }
+    },
+    {
+      $group: {
+        _id: "$groupNumber",
+        totalWeight: { $sum: "$weight" },
+        totalPayment: { $sum: "$payment" }
+      }
+    }
+  ]);
+
+  for (const summary of summaries) {
+    await MonthlyWorkerSummary.findOneAndUpdate(
+      { 
+        groupNumber: summary._id, 
+        year: lastMonth.getFullYear(), 
+        month: lastMonth.getMonth() + 1 
+      },
+      {
+        totalWeight: summary.totalWeight,
+        totalPayment: summary.totalPayment
+      },
+      { upsert: true, new: true }
+    );
+  }
+};
+
+// 매일 자정에 실행되는 스케줄러 설정
+const schedule = require('node-schedule');
+schedule.scheduleJob('0 0 * * *', createMonthlySummary);
+
+// 지난달 요약 데이터 조회 엔드포인트
+router.get('/last-month-summary/:groupNumber', async (req, res) => {
+  try {
+    await connectDB();
+    const { groupNumber } = req.params;
+    const now = new Date();
+    
+    // 11일 이후면 데이터를 제공하지 않음
+    if (now.getDate() > 11) {
+      return res.status(403).json({ message: "지난달 데이터를 더 이상 조회할 수 없습니다." });
+    }
+
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+    const summary = await Work.aggregate([
+      {
+        $match: {
+          groupNumber: groupNumber,
+          date: { $gte: startOfLastMonth, $lte: endOfLastMonth }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalWeight: { $sum: "$weight" },
+          totalPayment: { $sum: "$payment" }
+        }
+      }
+    ]);
+
+    if (summary.length === 0) {
+      return res.status(404).json({ message: "지난달 데이터가 없습니다." });
+    }
+
+    res.json({
+      totalWeight: summary[0].totalWeight,
+      totalPayment: summary[0].totalPayment
+    });
+  } catch (error) {
+    console.error('지난달 요약 데이터 조회 중 오류:', error);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
