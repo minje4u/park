@@ -94,14 +94,15 @@ const getAvailableYears = (years) => {
 };
 
 const WorkStatistics = () => {
+  const [employees, setEmployees] = useState([]); // employees 상태 추가
+  const [editingName, setEditingName] = useState(null);
   const [workStatistics, setWorkStatistics] = useState({});
+  const tableRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [datesWithData, setDatesWithData] = useState([]);
+  const [sortConfig, setSortConfig] = useState({ key: 'groupNumber', direction: 'ascending' });
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [sortConfig, setSortConfig] = useState({ key: 'groupNumber', direction: 'ascending' });
-  const [editingName, setEditingName] = useState(null);
-  const tableRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
@@ -146,7 +147,7 @@ const WorkStatistics = () => {
         params: {
           year: selectedMonth.getFullYear(),
           month: selectedMonth.getMonth() + 1,
-          groupNumber: '' // 빈 문자열로 설정하여 모든 작업자의 데이터를 ��져옵니다.
+          groupNumber: '' // 빈 문자열로 설정하여 모든 작업자의 데이터를 져옵니다.
         }
       });
       console.log("서버 응답 데이터:", response.data);
@@ -204,7 +205,7 @@ const WorkStatistics = () => {
         }
       } catch (error) {
         console.error('데이터 삭제 중 오류 발생:', error);
-        alert('데이터 삭제 중 오류가 발생했습니다.');
+        alert('데이터 삭 중 오류가 발생했습니다.');
       }
     }
   }, [selectedMonth]);
@@ -250,33 +251,14 @@ const WorkStatistics = () => {
   }, [workStatistics]);
 
   const sortedAndFilteredEmployees = useMemo(() => {
-    let sortableItems = Object.entries(workStatistics).map(([groupNumber, data]) => ({
+    return Object.entries(workStatistics).map(([groupNumber, data]) => ({
       groupNumber,
-      name: data.employeeName,
+      name: employees.find(emp => emp.groupNumber === groupNumber)?.name || data.employeeName,
       ...data,
       sum: Object.values(data.중량 || {}).reduce((acc, val) => acc + (val || 0), 0),
       pay: Math.floor(Object.values(data.중량 || {}).reduce((acc, val) => acc + (val || 0), 0) * 270)
     }));
-
-    if (searchTerm.trim()) {
-      sortableItems = sortableItems.filter(item =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.groupNumber.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    sortableItems.sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? 1 : -1;
-      }
-      return 0;
-    });
-
-    return sortableItems;
-  }, [workStatistics, searchTerm, sortConfig]);
+  }, [workStatistics, employees]);
 
   useEffect(() => {
     const adjustFixedColumns = () => {
@@ -306,34 +288,24 @@ const WorkStatistics = () => {
   }, [workStatistics]);
 
   const handleNameEdit = (groupNumber, newName) => {
-    setEditingName(groupNumber);
-    setWorkStatistics(prevStats => ({
-      ...prevStats,
-      [groupNumber]: {
-        ...prevStats[groupNumber],
-        employeeName: newName
-      }
-    }));
+    // 이름 수정 로직
+    const updatedEmployees = employees.map(emp => 
+      emp.groupNumber === groupNumber ? { ...emp, name: newName } : emp
+    );
+    setEmployees(updatedEmployees);
   };
 
   const handleNameSave = async (groupNumber) => {
     try {
-      const newName = workStatistics[groupNumber].employeeName;
-      const response = await axios.put(`/employee/name/${groupNumber}`, { newName });
+      const employee = employees.find(emp => emp.groupNumber === groupNumber);
+      const response = await axios.put(`/employee/name/${groupNumber}`, { newName: employee.name });
       if (response.data.success) {
         setEditingName(null);
-        // 작업자 관리 컴포넌트에 변경 사항 알림
-        if (typeof window.updateEmployeeName === 'function') {
-          window.updateEmployeeName(groupNumber, newName);
-        }
-        return true;
       } else {
-        throw new Error(response.data.message || '서버에서 이름 수정을 실패했습니다.');
+        // 실패 처리
       }
     } catch (error) {
-      console.error('이름 수정 중 오류:', error);
-      alert(error.message || '이름 수정에 실패했습니다.');
-      return false;
+      console.error('이름 저장 중 오류 발생:', error);
     }
   };
 
@@ -434,6 +406,19 @@ const WorkStatistics = () => {
   
     fetchAllData();
   }, []);
+
+  const fetchEmployees = useCallback(async () => {
+    try {
+      const response = await axios.get('/employees'); // 직원 데이터 가져오기
+      setEmployees(response.data);
+    } catch (error) {
+      console.error('직원 정보를 가져오는 데 실패했습니다:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEmployees(); // 컴포넌트 마운트 시 직원 데이터 가져오기
+  }, [fetchEmployees]);
 
   return (
     <div className="work-statistics">
