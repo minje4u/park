@@ -62,7 +62,7 @@ const WorkerPage = ({ monthStats }) => {
 
   useEffect(() => {
     if (notification) {
-      alert(`새로운 ${notification.type === 'notice' ? '공지사���' : '작업자료'}가 등록되었습니다.`);
+      alert(`새로운 ${notification.type === 'notice' ? '공지사항' : '작업자료'}가 등록되었습니다.`);
     }
   }, [notification]);
 
@@ -424,6 +424,14 @@ const WorkerPage = ({ monthStats }) => {
   const today = new Date();
   const cutoffDate = new Date(today.getFullYear(), today.getMonth(), 11); // 이번달 11일
 
+  const renderAnimatedText = (text) => {
+    return text.split('').map((char, index) => (
+      <span key={index} className="animated-char" style={{ animationDelay: `${index * 0.1}s` }}>
+        {char}
+      </span>
+    ));
+  };
+
   return (
     <div className="worker-container">
       <div className="worker-header">
@@ -533,7 +541,7 @@ const WorkerPage = ({ monthStats }) => {
 
       <div className="fortune-section">
         <div className="fortune-header">
-          <h5>오늘도 화이팅!</h5>
+          <h4 className="animated-text">{renderAnimatedText("오늘도 화이팅!")}</h4> {/* 애니메이션이 적용된 문구 */}
           <div className="fortune-buttons">
             {accumulatedScore >= 100 && (
               <button onClick={handleLuckyShopOpen} className="lucky-shop-button">
@@ -564,7 +572,7 @@ const WorkerPage = ({ monthStats }) => {
         <h3><span className="info-icon">ℹ️</span> 안내사항</h3>
         <ol>
           <li>공지사항 확인을 생활화 합시다.</li>
-          <li>작업내역은 매달 1일~말일까지 보여지며, 매월 10일경에 초기화 됩니다.</li>
+          <li>작업내역은 매달 1일~말일까지 보여지��, 매월 10일경에 초기화 됩니다.</li>
         </ol>
       </div>
 

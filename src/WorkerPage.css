@@ -879,3 +879,29 @@ body {
 .close-button:hover {
   background-color: #c82333;
 }
+
+/* 애니메이션 추가 */
+@keyframes growAndShrink {
+  0% {
+    transform: scale(1);
+    opacity: 0; /* 처음에는 보이지 않음 */
+  }
+  50% {
+    opacity: 1; /* 중간에 보이기 시작 */
+    transform: scale(1.5); /* 글자가 커짐 */
+  }
+  100% {
+    transform: scale(1); /* 원래 크기로 돌아감 */
+  }
+}
+
+.animated-char {
+  display: inline-block; /* 각 글자를 블록으로 만들어 애니메이션 적용 */
+  animation: growAndShrink 0.5s forwards; /* 애니메이션 적용 */
+  animation-delay: 0s; /* 기본 지연 시간 */
+}
+
+.animated-text {
+  animation: none; /* 전체 텍스트에 대한 애니메이션 초기화 */
+  animation-delay: 1s; /* 마지막에 1초 대기 */
+}
