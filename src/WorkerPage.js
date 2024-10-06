@@ -230,8 +230,8 @@ const WorkerPage = ({ monthStats }) => {
     return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount);
   };
 
-  const sumKg = workerData.reduce((sum, item) => sum + item.weight, 0);
-  const totalPay = workerData.reduce((sum, item) => sum + item.payment, 0);
+  const totalWeight = workerData.reduce((sum, item) => sum + item.weight, 0); // 총 중량 계산
+  const totalPay = totalWeight * 270; // 총 도급비용 계산
 
   const openNoticeModal = (notice) => {
     setSelectedNotice(notice);
@@ -527,11 +527,11 @@ const WorkerPage = ({ monthStats }) => {
           <>
             <div className="stat-card">
               <span className="stat-label">총 작업량</span>
-              <span className="stat-value">{sumKg.toFixed(2)} Kg</span>
+              <span className="stat-value">{totalWeight.toFixed(2)} Kg</span> {/* 총 중량 표시 */}
             </div>
             <div className="stat-card">
               <span className="stat-label">총 도급비용</span>
-              <span className="stat-value">{formatCurrency(totalPay)}</span>
+              <span className="stat-value">{formatCurrency(totalPay)}</span> {/* 총 도급비용 표시 */}
             </div>
           </>
         ) : (
@@ -572,7 +572,7 @@ const WorkerPage = ({ monthStats }) => {
         <h3><span className="info-icon">ℹ️</span> 안내사항</h3>
         <ol>
           <li>공지사항 확인을 생활화 합시다.</li>
-          <li>작업내역은 매달 1일~말일까지 보여지��, 매월 10일경에 초기화 됩니다.</li>
+          <li>작업내역은 매달 1일~말일까지 보여지, 매월 10일경에 초기화 됩니다.</li>
         </ol>
       </div>
 

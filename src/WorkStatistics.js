@@ -257,8 +257,30 @@ const WorkStatistics = () => {
       ...data,
       sum: Object.values(data.중량 || {}).reduce((acc, val) => acc + (val || 0), 0),
       pay: Math.floor(Object.values(data.중량 || {}).reduce((acc, val) => acc + (val || 0), 0) * 270)
-    }));
-  }, [workStatistics, employees]);
+    })).filter(employee => 
+      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      employee.groupNumber.toLowerCase().includes(searchTerm.toLowerCase()) // 조판번호로 검색 추가
+    ).sort((a, b) => {
+      if (sortConfig.key === 'name') {
+        return sortConfig.direction === 'ascending' 
+          ? a.name.localeCompare(b.name) 
+          : b.name.localeCompare(a.name);
+      } else if (sortConfig.key === 'sum') {
+        return sortConfig.direction === 'ascending' 
+          ? a.sum - b.sum 
+          : b.sum - a.sum;
+      } else if (sortConfig.key === 'pay') {
+        return sortConfig.direction === 'ascending' 
+          ? a.pay - b.pay 
+          : b.pay - a.pay;
+      } else if (sortConfig.key === 'groupNumber') {
+        return sortConfig.direction === 'ascending' 
+          ? a.groupNumber.localeCompare(b.groupNumber) 
+          : b.groupNumber.localeCompare(a.groupNumber);
+      }
+      return 0; // 기본값
+    });
+  }, [workStatistics, employees, searchTerm, sortConfig]);
 
   useEffect(() => {
     const adjustFixedColumns = () => {
@@ -300,6 +322,12 @@ const WorkStatistics = () => {
       const employee = employees.find(emp => emp.groupNumber === groupNumber);
       const response = await axios.put(`/employee/name/${groupNumber}`, { newName: employee.name });
       if (response.data.success) {
+        // 이름 수정 후 employees 상태 업데이트
+        setEmployees(prevEmployees => 
+          prevEmployees.map(emp => 
+            emp.groupNumber === groupNumber ? { ...emp, name: employee.name } : emp
+          )
+        );
         setEditingName(null);
       } else {
         // 실패 처리
@@ -417,7 +445,7 @@ const WorkStatistics = () => {
   }, []);
 
   useEffect(() => {
-    fetchEmployees(); // 컴포넌트 마운트 시 직원 데이터 가져오기
+    fetchEmployees(); // 컴포넌트 마운트 시 직원 ��이터 가져오기
   }, [fetchEmployees]);
 
   return (
@@ -533,11 +561,11 @@ const WorkStatistics = () => {
                   </td>
                   {datesWithData.map((day) => (
                     <td key={day} className="date-column data-cell">
-                      <div className="weight">{item.중량 && item.중량[day] ? item.중량[day].toFixed(1) : "-"}</div>
+                      <div className="weight">{item.중량 && item.중량[day] ? item.중량[day].toFixed(2) : "-"}</div>
                       <div className="work-hours">{item.작업시간 && item.작업시간[day] ? item.작업시간[day] : "-"}</div>
                     </td>
                   ))}
-                  <td className="sum-cell">{item.sum.toFixed(1)} kg</td>
+                  <td className="sum-cell">{item.sum.toFixed(2)} kg</td>
                   <td className="pay-cell">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(item.pay)}</td>
                 </tr>
               ))}
@@ -549,13 +577,13 @@ const WorkStatistics = () => {
                   const dailyPay = sortedAndFilteredEmployees.reduce((sum, item) => sum + (item.중량[day] ? item.중량[day] * 270 : 0), 0);
                   return (
                     <td key={day} className="date-column total-cell">
-                      <div className="weight">{dailyTotal.toFixed(1)} kg</div>
+                      <div className="weight">{dailyTotal.toFixed(2)} kg</div>
                       <div className="pay">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(dailyPay)}</div>
                     </td>
                   );
                 })}
                 <td className="sum-cell total-cell">
-                  <div className="weight">{monthStats.totalWeight.toFixed(1)} kg</div>
+                  <div className="weight">{monthStats.totalWeight.toFixed(2)} kg</div>
                 </td>
                 <td className="pay-cell total-cell">
                   <div className="pay">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(monthStats.totalPay)}</div>

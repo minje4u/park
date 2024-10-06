@@ -84,23 +84,13 @@
 }
 
 .admin-table th::after {
-  content: '\25B2';
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0.3;
-  font-size: 0.8em;
+  content: none !important; /* 화살표를 나타내는 내용 제거 */
 }
 
-.admin-table th.sort-asc::after {
-  content: '\25B2';
-  opacity: 1;
-}
-
+.admin-table th.sort-asc::after,
 .admin-table th.sort-desc::after {
-  content: '\25BC';
-  opacity: 1;
+  content: ''; /* 화살표를 나타내는 내용 제거 */
+  display: none; /* 화살표를 숨김 */
 }
 
 .admin-table .fixed-column,
