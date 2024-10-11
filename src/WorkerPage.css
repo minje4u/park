@@ -161,14 +161,15 @@
 .notice-header h3 {
   margin: 0;
   color: #333;
-  font-size: 1em;
-  font-weight: bold;
+  font-size: 1.2em; /* 제목 크기 증가 */
+  font-weight: bold; /* 제목 두껍게 */
 }
 
 .notice-content {
-  background-color: #f9f9f9;
+  background-color: #f9f9f9; /* 배경색을 조금 더 밝게 */
   border-radius: 5px;
-  padding: 10px;
+  padding: 15px; /* 패딩을 늘려서 여백을 추가 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* 그림자 추가 */
 }
 
 .notice-buttons {
@@ -183,15 +184,17 @@
   background-color: #e0e0e0;
   border: none;
   border-radius: 5px;
-  padding: 8px 12px;
+  padding: 10px 15px; /* 패딩을 늘려서 클릭하기 쉽게 */
   font-size: 0.9em;
   color: #333;
   cursor: pointer;
   transition: background-color 0.3s;
+  margin-bottom: 5px; /* 버튼 사이에 여백 추가 */
+  font-weight: bold; /* 버튼 글자를 진하게 설정 */
 }
 
 .notice-button:hover {
-  background-color: #d0d0d0;
+  background-color: #d0d0d0; /* 호버 시 색상 변경 */
 }
 
 .notice-icon {

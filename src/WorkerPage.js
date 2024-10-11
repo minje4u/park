@@ -421,8 +421,7 @@ const WorkerPage = ({ monthStats }) => {
     fetchLastFortuneDate();
   }, []);
 
-  const today = new Date();
-  const cutoffDate = new Date(today.getFullYear(), today.getMonth(), 11); // 이번달 11일
+   
 
   const renderAnimatedText = (text) => {
     return text.split('').map((char, index) => (
@@ -523,20 +522,14 @@ const WorkerPage = ({ monthStats }) => {
       </div>
 
       <div className="worker-stats">
-        {today <= cutoffDate ? ( // 오늘이 11일 이하일 경우에만 총계 표시
-          <>
-            <div className="stat-card">
-              <span className="stat-label">총 작업량</span>
-              <span className="stat-value">{totalWeight.toFixed(2)} Kg</span> {/* 총 중량 표시 */}
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">총 도급비용</span>
-              <span className="stat-value">{formatCurrency(totalPay)}</span> {/* 총 도급비용 표시 */}
-            </div>
-          </>
-        ) : (
-          <p>총계 데이터는 11일까지만 표시됩니다.</p> // 11일 이후 메시지
-        )}
+        <div className="stat-card">
+          <span className="stat-label">총 작업량</span>
+          <span className="stat-value">{totalWeight.toFixed(2)} Kg</span> {/* 총 중량 표시 */}
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">총 도급비용</span>
+          <span className="stat-value">{formatCurrency(totalPay)}</span> {/* 총 도급비용 표시 */}
+        </div>
       </div>
 
       <div className="fortune-section">
@@ -572,7 +565,8 @@ const WorkerPage = ({ monthStats }) => {
         <h3><span className="info-icon">ℹ️</span> 안내사항</h3>
         <ol>
           <li>공지사항 확인을 생활화 합시다.</li>
-          <li>작업내역은 매달 1일~말일까지 보여지, 매월 10일경에 초기화 됩니다.</li>
+          <li>작업내역은 매달 1일~말일까지 입니다.</li>
+          
         </ol>
       </div>
 
