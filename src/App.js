@@ -5,6 +5,7 @@ import AdminPage from "./AdminPage";
 import WorkerPage from "./WorkerPage";
 import PasswordChangePage from './PasswordChangePage';
 import EmployeeManagement from "./EmployeeManagement";
+import AllEmployees from "./AllEmployees";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -56,6 +57,9 @@ function App() {
         } />
         <Route path="/employees" element={
           isLoggedIn && role === "admin" ? <EmployeeManagement /> : <Navigate to="/login" replace />
+        } />
+        <Route path="/all-employees" element={
+          isLoggedIn ? <AllEmployees /> : <Navigate to="/login" replace />
         } />
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />

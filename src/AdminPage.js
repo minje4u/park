@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import WorkRegistration from "./WorkRegistration";
 import EmployeeManagement from "./EmployeeManagement";
 import WorkStatistics from "./WorkStatistics";
+import AllEmployees from "./AllEmployees";
 import "./AdminPage.css"; 
 import axios from 'axios';
 import FortuneManagement from "./FortuneManagement";
@@ -141,6 +142,9 @@ const AdminPage = ({ username }) => {
         <button onClick={() => handleTabClick("작업등록")}>작업등록</button>
         <button onClick={() => handleTabClick("작업량통계")}>작업량통계</button>
         <button onClick={() => handleTabClick("작업자관리")}>작업자관리</button>
+        
+        <button onClick={() => handleTabClick("작업자상세보기")}>작업자 상세보기</button>
+        
         <button onClick={() => handleTabClick("공지사항")}>공지사항</button>
         <button onClick={() => handleTabClick("운세관리")}>운세관리</button>
         <button onClick={() => handleTabClick("행운상점")}>행운상점</button>
@@ -152,6 +156,9 @@ const AdminPage = ({ username }) => {
         {activeTab === "작업자관리" && (
            <EmployeeManagement workers={workers} />
          )}
+        {activeTab === "작업자상세보기" && (
+           <AllEmployees />
+        )}
         {activeTab === "공지사항" && (
           <div className="notice-section">
             <h2 className="section-title">공지사항 게시판</h2>

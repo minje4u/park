@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const moment = require('moment-timezone');
 moment.tz.setDefault("Asia/Seoul");
 
-const Employee = require('./models/employee');
+const { Employee, initializeFields } = require('./models/employee');
 const Work = require('./models/work');
 const Notice = require('./models/notice');
 const express = require('express');
@@ -19,6 +19,7 @@ const LuckyShopItem = require('./models/LuckyShopItem');
 const LuckyShopPurchase = require('./models/LuckyShopPurchase');
 const FortuneLog = require('./models/fortuneLog');
 const PointHistory = require('./models/pointHistory');
+const AccountHistory = require('./models/accountHistory');
 
 const prizeSchema = new mongoose.Schema({
   name: String,
@@ -33,7 +34,7 @@ const router = express.Router();
 
 const getWorkerData = require('./getWorkerData');
 
-// 그리고 라우트 정의를 다음과 같이 수정하세요
+// 그리고 라트 정의를 다음과 같이 수정하세요
 app.get('/getWorkerData', (req, res) => getWorkerData(req, res));
 
 module.exports.handler = serverless(app);
@@ -241,7 +242,7 @@ router.get('/notices', async (req, res) => {
     const notices = await Notice.find().sort({ dateTime: -1 });
     res.json(notices);
   } catch (error) {
-    res.status(500).json({ error: '공지사항 조회 중 오류가 발생했니다.' });
+    res.status(500).json({ error: '공지사항 조회 중 ���류가 발생했니다.' });
   }
 });
 
@@ -355,7 +356,7 @@ router.delete('/employee/work/:date', async (req, res) => {
   }
 });
 
-// 데이터베이스 초기화 라우트
+// 데이���베이스 초기화 라우트
 router.post('/reset-database', async (req, res) => {
   console.log('데이터베이스 초기화 요청 받음');
   try {
@@ -382,20 +383,7 @@ router.post('/reset-database', async (req, res) => {
 // 서버 시작 시 데이터베이스 연결 및 초기 관리자 계정 생성
 connectDB().then(async () => {
   console.log('서버가 시작되었습니다.');
-  try {
-    const works = await Work.find({ groupNumber: { $exists: false } });
-    
-    let updatedCount = 0;
-    for (let work of works) {
-      work.groupNumber = `${work.조}-${work.employeeId.toString().padStart(2, '0')}`;
-      await work.save();
-      updatedCount++;
-    }
-
-    console.log(`${updatedCount}개의 작업 데이터에 groupNumber가 추가되었습니다.`);
-  } catch (error) {
-    console.error('groupNumber 업데이트 중 오류 발생:', error);
-  }
+  await initializeFields(); // 필드 초기화 호출
 }).catch(err => {
   console.error('서버 시작 중 오류 발생:', err);
 });
@@ -445,7 +433,7 @@ router.get('/employees', async (req, res) => {
   }
 });
 
-// 작업자 추가 라우트 추가
+// 작업자 추가 우트 추가
 router.post('/employees', async (req, res) => {
   try {
     await connectDB();
@@ -528,7 +516,7 @@ router.get('/employee/:groupNumber', async (req, res) => {
     const { groupNumber } = req.params;
     const employee = await Employee.findOne({ groupNumber });
     if (!employee) {
-      return res.status(404).json({ error: '작업자를 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '작업를 찾을 수 없습니다.' });
     }
     res.json({ name: employee.name });
   } catch (error) {
@@ -856,7 +844,7 @@ router.post('/lucky-shop-purchase/:id', async (req, res) => {
     const fortuneLog = await FortuneLog.findOne({ groupNumber });
 
     if (!item || !fortuneLog) {
-      return res.status(404).json({ error: '상품 또는 사용자 정보를 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '상품 또는 사용자 정보를 찾을 수 없습��다.' });
     }
 
     if (fortuneLog.accumulatedScore < item.points) {
@@ -1005,19 +993,20 @@ router.get('/accumulated-scores', async (req, res) => {
 router.put('/employee/:groupNumber', async (req, res) => {
   try {
     const { groupNumber } = req.params;
-    const { name } = req.body;
-    const updatedEmployee = await Employee.findOneAndUpdate(
-      { groupNumber },
-      { name },
-      { new: true }
-    );
-    if (!updatedEmployee) {
-      return res.status(404).json({ error: '작업자를 찾을 수 없습니다.' });
+    const updates = req.body;
+
+    const employee = await Employee.findOne({ groupNumber });
+    if (!employee) {
+      return res.status(404).json({ message: '직원을 찾을 수 없습니다.' });
     }
-    res.json(updatedEmployee);
+
+    // 업데이트할 필드가 있는 경우
+    await employee.updateInfo(updates); // updateInfo 메서드를 사용하여 업데이트
+
+    res.status(200).json({ success: true, message: '직원 정보가 업데이트되었습니다.' });
   } catch (error) {
-    console.error('작업자 이름 수정 중 오류:', error);
-    res.status(500).json({ error: '작업자 이름 수정 중 오류가 발생했습니다.' });
+    console.error('직원 정보 업데이트 중 오류 발생:', error);
+    res.status(500).json({ error: '직원 정보 업데이트에 실패했습니다.' });
   }
 });
 
@@ -1223,5 +1212,75 @@ router.get('/last-month-summary/:groupNumber', async (req, res) => {
   } catch (error) {
     console.error('지난달 요약 데이터 조회 중 오류:', error);
     res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// 이력 저장을 위한 API
+router.post('/account-history', async (req, res) => {
+  try {
+    const { groupNumber, oldAccountNumber, newAccountNumber, reason } = req.body;
+
+    const historyEntry = new AccountHistory({
+      groupNumber,
+      oldAccountNumber,
+      newAccountNumber,
+      reason,
+      date: new Date()
+    });
+
+    await historyEntry.save();
+    res.status(201).json({ success: true, message: '이력이 저장되었습니다.' });
+  } catch (error) {
+    console.error('이력 저장 중 오류 발생:', error);
+    res.status(500).json({ error: '이력 저장에 실패했습니다.' });
+  }
+});
+
+// 계좌번호 변경 이력 가져오기
+router.get('/account-history/:groupNumber', async (req, res) => {
+  try {
+    const { groupNumber } = req.params;
+    const history = await AccountHistory.find({ groupNumber }).sort({ date: -1 }); // 최신 순으로 정렬
+    res.status(200).json(history);
+  } catch (error) {
+    console.error('이력 가져오기 중 오류 발생:', error);
+    res.status(500).json({ error: '이력 가져오기 실패' });
+  }
+});
+
+// 계좌번호 확인 상태 업데이트
+router.put('/employee/check-account-number/:groupNumber', async (req, res) => {
+  try {
+    const { groupNumber } = req.params;
+    const employee = await Employee.findOne({ groupNumber });
+    if (!employee) {
+      return res.status(404).json({ message: '직원을 찾을 수 없습니다.' });
+    }
+
+    // 계좌번호 확인 상태 업데이트
+    employee.isAccountNumberChecked = true; // true로 설정
+    await employee.save(); // 데이터베이스에 저장
+
+    res.status(200).json({ success: true, message: '계좌번호 확인 상태가 업데이트되었습니다.' });
+  } catch (error) {
+    console.error('계좌번호 확인 상태 업데이트 중 오류 발생:', error);
+    res.status(500).json({ error: '계좌번호 확인 상태 업데이트에 실패했습니다.' });
+  }
+});
+
+// 계좌번호 변경 이력 삭제 API
+router.delete('/account-history/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await AccountHistory.findByIdAndDelete(id); // ID로 이력 삭제
+
+    if (!result) {
+      return res.status(404).json({ message: '이력을 찾을 수 없습니다.' });
+    }
+
+    res.status(200).json({ success: true, message: '이력이 삭제되었습니다.' });
+  } catch (error) {
+    console.error('이력 삭제 중 오류 발생:', error);
+    res.status(500).json({ error: '이력 삭제에 실패했습니다.' });
   }
 });
