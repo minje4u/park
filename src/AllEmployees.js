@@ -119,7 +119,7 @@ const AllEmployees = () => {
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.value = employee[field] || ''; 
+    input.value = employee[field] || '';
     input.className = 'editable-input';
     input.style.width = `${Math.max(input.value.length * 8, 100)}px`;
 
@@ -133,18 +133,24 @@ const AllEmployees = () => {
         try {
           const updatedData = { [field]: input.value };
 
-          if (field === 'accountNumber') {
-            const oldAccountNumber = employee.accountNumber;
+          const response = await axios.put(`/employee/${employee.groupNumber}`, updatedData);
+          if (response.status === 200) {
+            setEmployees((prev) =>
+              prev.map((emp) => (emp.groupNumber === employee.groupNumber ? { ...emp, [field]: input.value } : emp))
+            );
+            setFilteredEmployees((prev) =>
+              prev.map((emp) => (emp.groupNumber === employee.groupNumber ? { ...emp, [field]: input.value } : emp))
+            );
 
-            if (oldAccountNumber !== input.value) {
-              const reason = prompt('변경 이유를 입력하세요:');
-              if (!reason) {
-                alert('변경 이유를 입력해야 합니다.');
-                return;
-              }
+            if (field === 'accountNumber') {
+              const oldAccountNumber = employee.accountNumber;
+              if (oldAccountNumber !== input.value) {
+                const reason = prompt('변경 이유를 입력하세요:');
+                if (!reason) {
+                  alert('변경 이유를 입력해야 합니다.');
+                  return;
+                }
 
-              const response = await axios.put(`/employee/${employee.groupNumber}`, updatedData);
-              if (response.status === 200) {
                 await axios.put(`/employee/${employee.groupNumber}`, { previousAccountNumber: oldAccountNumber });
                 await axios.post('/account-history', {
                   groupNumber: employee.groupNumber,
@@ -154,15 +160,6 @@ const AllEmployees = () => {
                 });
 
                 alert('계좌번호가 변경되었습니다.');
-
-                setEmployees((prev) =>
-                  prev.map((emp) => (emp.groupNumber === employee.groupNumber ? { ...emp, accountNumber: input.value, isAccountNumberChecked: false } : emp))
-                );
-                setFilteredEmployees((prev) =>
-                  prev.map((emp) => (emp.groupNumber === employee.groupNumber ? { ...emp, accountNumber: input.value, isAccountNumberChecked: false } : emp))
-                );
-
-                await axios.put(`/employee/${employee.groupNumber}`, { isAccountNumberChecked: false });
               }
             }
           }
@@ -183,7 +180,6 @@ const AllEmployees = () => {
     cell.innerHTML = '';
     cell.appendChild(input);
     input.focus();
-    setActiveInput(input);
   };
 
   const handleShowHistory = async (employee) => {
