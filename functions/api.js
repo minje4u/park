@@ -242,7 +242,7 @@ router.get('/notices', async (req, res) => {
     const notices = await Notice.find().sort({ dateTime: -1 });
     res.json(notices);
   } catch (error) {
-    res.status(500).json({ error: '공지사항 조회 중 ���류가 발생했니다.' });
+    res.status(500).json({ error: '공지사항 조회 중 오류가 발생했니다.' });
   }
 });
 
@@ -356,7 +356,7 @@ router.delete('/employee/work/:date', async (req, res) => {
   }
 });
 
-// 데이���베이스 초기화 라우트
+// 데이터베이스 초기화 라우트
 router.post('/reset-database', async (req, res) => {
   console.log('데이터베이스 초기화 요청 받음');
   try {
@@ -844,7 +844,7 @@ router.post('/lucky-shop-purchase/:id', async (req, res) => {
     const fortuneLog = await FortuneLog.findOne({ groupNumber });
 
     if (!item || !fortuneLog) {
-      return res.status(404).json({ error: '상품 또는 사용자 정보를 찾을 수 없습��다.' });
+      return res.status(404).json({ error: '상품 또는 사용자 정보를 찾을 수 없습다.' });
     }
 
     if (fortuneLog.accumulatedScore < item.points) {
@@ -995,18 +995,15 @@ router.put('/employee/:groupNumber', async (req, res) => {
     const { groupNumber } = req.params;
     const updates = req.body;
 
-    const employee = await Employee.findOne({ groupNumber });
+    const employee = await Employee.findOneAndUpdate({ groupNumber }, updates, { new: true });
     if (!employee) {
-      return res.status(404).json({ message: '직원을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '직원을 찾을 수 없습니다.' });
     }
 
-    // 업데이트할 필드가 있는 경우
-    await employee.updateInfo(updates); // updateInfo 메서드를 사용하여 업데이트
-
-    res.status(200).json({ success: true, message: '직원 정보가 업데이트되었습니다.' });
+    res.json(employee);
   } catch (error) {
     console.error('직원 정보 업데이트 중 오류 발생:', error);
-    res.status(500).json({ error: '직원 정보 업데이트에 실패했습니다.' });
+    res.status(500).json({ error: '직원 정보 업데이트 중 오류가 발생했습니다.' });
   }
 });
 

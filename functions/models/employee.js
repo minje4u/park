@@ -18,7 +18,8 @@ const EmployeeSchema = new mongoose.Schema({
   hireDate: { type: String }, // 입사일자 필드 추가
   guaranteePeriod: { type: String }, // 보증기간 필드 추가
   idNumber: { type: String }, // 주민번호 필드
-  isAccountNumberChecked: { type: Boolean, default: false } // 계좌번호 확인 여부 필드 추가
+  isAccountNumberChecked: { type: Boolean, default: false }, // 계좌번호 확인 여부 필드 추가
+  photo: { type: String }, // 사진 URL 필드 추가
 });
 
 // 필드 초기화 함수
@@ -37,6 +38,7 @@ const initializeFields = async () => {
       employee.idNumber = employee.idNumber || ''; // 값이 없으면 빈 문자열
       employee.previousAccountNumber = employee.previousAccountNumber || ''; // 값이 없으면 빈 문자열
       employee.isAccountNumberChecked = employee.isAccountNumberChecked || false; // 기본값 false로 초기화
+      employee.photo = employee.photo || '';
       await employee.save();
     }
     console.log('모든 직원의 필드가 초기화되었습니다.');

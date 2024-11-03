@@ -11,6 +11,12 @@ const API_URL = process.env.NODE_ENV === 'production'
 
 axios.defaults.baseURL = API_URL;
 
+const extractImageUrl = (html) => {
+  const regex = /<img[^>]+src="([^">]+)"/; // <img> 태그에서 src 속성 추출
+  const match = html.match(regex);
+  return match ? match[1] : null; // URL이 있으면 반환, 없으면 null
+};
+
 const AllEmployees = () => {
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
@@ -20,6 +26,8 @@ const AllEmployees = () => {
   const [activeInput, setActiveInput] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [accountHistory, setAccountHistory] = useState([]);
+  const [photoUrl, setPhotoUrl] = useState(''); // 사진 URL 상태 추가
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -29,6 +37,7 @@ const AllEmployees = () => {
         setFilteredEmployees(response.data);
         if (response.data.length > 0) {
           setSelectedEmployee(response.data[0]); // 첫 번째 작업자를 선택
+          setPhoto(response.data[0].photo || 'default-photo.png'); // 첫 번째 작업자의 사진 URL 설정
         }
       } catch (error) {
         console.error('직원 정보를 가져오는 데 실패했습니다:', error);
@@ -85,19 +94,9 @@ const AllEmployees = () => {
 
   const handleCardClick = (employee) => {
     setSelectedEmployee(employee);
-    setPhoto(employee.photo);
+    setPhoto(employee.photo || 'default-photo.png'); // 선택된 작업자의 사진 URL 업데이트
   };
 
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhoto(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const highlightText = (text) => {
     if (!text || !searchParam) return text; // 텍스트가 null 또는 검색어가 없으면 원래 텍스트 반환
@@ -225,6 +224,79 @@ const AllEmployees = () => {
     exportEmployeesToExcel(filteredEmployees); // 새로운 함수 호출
   };
 
+  const handlePhotoModalOpen = () => {
+    setShowPhotoModal(true);
+  };
+
+
+// 삭제 핸들러 함수 추가
+    const handlePhotoDelete = async () => {
+      // 첫 번째 확인
+      if (!window.confirm('사진을 삭제하시겠습니까?')) {
+          return;
+      }
+      
+      // 두 번째 확인
+      if (!window.confirm('정말로 삭제하시겠습니까?')) {
+          return;
+      }
+
+      try {
+          await axios.put(`/employee/${selectedEmployee.groupNumber}`, { photo: null });
+          
+          // 상태 업데이트
+          setEmployees((prev) =>
+              prev.map((emp) =>
+                  emp.groupNumber === selectedEmployee.groupNumber ? { ...emp, photo: null } : emp
+              )
+          );
+          setFilteredEmployees((prev) =>
+              prev.map((emp) =>
+                  emp.groupNumber === selectedEmployee.groupNumber ? { ...emp, photo: null } : emp
+              )
+          );
+          setSelectedEmployee((prev) => ({ ...prev, photo: null }));
+          setPhoto('default-photo.png'); // 기본 이미지로 변경
+      } catch (error) {
+          console.error('사진 삭제 중 오류 발생:', error);
+          alert('사진 삭제에 실패했습니다.');
+      }
+    };
+
+
+  const handlePhotoUrlSave = async () => {
+    if (photoUrl) {
+        const imageUrl = extractImageUrl(photoUrl);
+        if (imageUrl) {
+            try {
+                await axios.put(`/employee/${selectedEmployee.groupNumber}`, { photo: imageUrl });
+                
+                // 상태 업데이트
+                setEmployees((prev) =>
+                    prev.map((emp) =>
+                        emp.groupNumber === selectedEmployee.groupNumber ? { ...emp, photo: imageUrl } : emp
+                    )
+                );
+                setFilteredEmployees((prev) =>
+                    prev.map((emp) =>
+                        emp.groupNumber === selectedEmployee.groupNumber ? { ...emp, photo: imageUrl } : emp
+                    )
+                );
+                setSelectedEmployee((prev) => ({ ...prev, photo: imageUrl }));
+                setPhoto(imageUrl); // 사진 상태 즉시 업데이트
+                setShowPhotoModal(false);
+            } catch (error) {
+                console.error('사진 URL 저장 중 오류 발생:', error);
+                alert('사진 URL 저장에 실패했습니다.');
+            }
+        } else {
+            alert('유효한 이미지 URL을 포함한 HTML 코드를 입력하세요.');
+        }
+    } else {
+        alert('유효한 URL을 입력하세요.');
+    }
+};
+
   return (
     <div className="all-employees-container">
       <div className="search-form">
@@ -240,6 +312,22 @@ const AllEmployees = () => {
         <button onClick={handleExportToExcel}>엑셀 저장</button> {/* 엑셀 저장 버튼 추가 */}
       </div>
 
+      {/* 사진 등록 모달 */}
+      {showPhotoModal && (
+        <div className="modal-overlay" onClick={() => setShowPhotoModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>사진 URL 입력</h3>
+            <textarea
+              placeholder="HTML 코드를 입력하세요 (예: <img src='URL' alt='설명'>)"
+              value={photoUrl}
+              onChange={(e) => setPhotoUrl(e.target.value)}
+            />
+            <button onClick={handlePhotoUrlSave}>저장</button>
+            <button onClick={() => setShowPhotoModal(false)}>닫기</button>
+          </div>
+        </div>
+      )}
+
       {selectedEmployee && (
         <>
           <h3 className="selected-employee-title">선택된 작업자 정보</h3>
@@ -253,17 +341,13 @@ const AllEmployees = () => {
                 />
               </div>
               <div className="photo-buttons">
-                <label htmlFor="photo-upload" className="photo-upload-label">
-                  사진 등록
-                </label>
-                <input 
-                  id="photo-upload" 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handlePhotoChange} 
-                  className="photo-upload-input"
-                />
-              </div>
+    <button onClick={handlePhotoModalOpen} className="photo-upload-label">
+        사진 등록
+    </button>
+    <button onClick={handlePhotoDelete} className="photo-delete-button">
+        ×
+    </button>
+</div>
             </div>
             <div className="employee-info">
               <div className="info-pair">
