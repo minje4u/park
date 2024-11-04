@@ -207,13 +207,16 @@ h2 {
 }
 
 .employee-table th,
+/* 테이블 셀 기본 스타일에 position 추가 */
 .employee-table td {
+    position: relative;  /* 추가 */
     border: 1px solid #ddd;
     padding: 10px;
     text-align: left;
     vertical-align: middle;
     white-space: nowrap;
-}
+  }
+  
 
 .employee-table th {
     background-color: #2980b9; /* 블루 */
@@ -498,3 +501,87 @@ h2 {
 .modal-content button:last-child:hover {
   background-color: #c82333;
 }
+
+
+/* 보증기간 상태별 행 스타일 */
+.guarantee-expired-row {
+    background-color: #fd7489 !important; /* 연한 빨간색 */
+  }
+  
+  .guarantee-expired-row:hover {
+    background-color: #ffcdd2 !important; /* 좀 더 진한 빨간색 */
+  }
+  
+  .guarantee-warning-row {
+    background-color: #fff3e0 !important; /* 연한 주황색 */
+  }
+  
+  .guarantee-warning-row:hover {
+    background-color: #ffe0b2 !important; /* 좀 더 진한 주황색 */
+  }
+  
+
+  
+  /* 깜빡이는 애니메이션 정의 */
+@keyframes fastBlink {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  
+  /* 만료된 경우의 경고 표시 */
+  .guarantee-expired-row td[data-field="guaranteePeriod"]::after,
+  .guarantee-expired-row td[data-field="groupNumber"]::after {
+    content: "!";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    color: #c62828;
+    font-weight: bold;
+    animation: fastBlink 0.5s ease-in-out infinite;
+    z-index: 1;  /* 추가 */
+  }
+  
+  /* 경고(3개월 이내) 경우의 경고 표시 */
+  .guarantee-warning-row td[data-field="guaranteePeriod"]::after,
+  .guarantee-warning-row td[data-field="groupNumber"]::after {
+    content: "!";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    color: #ef6c00;
+    font-weight: bold;
+    animation: fastBlink 0.5s ease-in-out infinite;
+    z-index: 1;  /* 추가 */
+  }
+
+  /* date input 스타일 추가 */
+input[type="date"] {
+    font-size: 12px;  /* 폰트 크기 줄임 */
+    padding: 2px 4px;  /* 패딩도 줄임 */
+    height: 24px;  /* 높이 조절 */
+  }
+  
+  /* 기존 editable-input 스타일이 있다면 date 타입에 대한 예외 처리 */
+  .editable-input[type="date"] {
+    font-size: 12px;
+    padding: 2px 4px;
+    height: 24px;
+  }
+
+  .excel-upload-button {
+    display: inline-block;
+    padding: 8px 12px;
+    margin-left: 8px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+  
+  .excel-upload-button:hover {
+    background-color: #45a049;
+  }
+  

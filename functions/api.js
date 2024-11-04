@@ -1281,3 +1281,28 @@ router.delete('/account-history/:id', async (req, res) => {
     res.status(500).json({ error: '이력 삭제에 실패했습니다.' });
   }
 });
+
+
+router.post('/employees/bulk-update', async (req, res) => {
+  try {
+    await connectDB();
+    const employeesData = req.body;
+
+    for (const empData of employeesData) {
+      const { groupNumber } = empData;
+
+      // groupNumber(조판번호)를 기준으로 직원 정보를 업데이트하거나, 없으면 새로 추가
+      await Employee.findOneAndUpdate(
+        { groupNumber },
+        { $set: empData },
+        { new: true, upsert: true } // upsert: 존재하지 않으면 새로 삽입
+      );
+    }
+
+    const updatedEmployees = await Employee.find({});
+    res.status(200).json(updatedEmployees); // 업데이트된 직원 목록 반환
+  } catch (error) {
+    console.error('엑셀 데이터로 직원 정보를 업데이트하는 중 오류 발생:', error);
+    res.status(500).json({ error: '엑셀 데이터로 직원 정보 업데이트 실패.' });
+  }
+});
